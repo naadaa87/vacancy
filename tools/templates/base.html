@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ page.title }}</title>
+<meta name="description" content="{{ page.desc }}">
+<link rel="canonical" href="{{ site.domain }}{{ page.path if page.path != '/' else '/' }}">
+{% if page_id == '404' %}<meta name="robots" content="noindex">{% endif %}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="공백 — 주식회사 블랭크">
+<meta property="og:title" content="{{ page.title }}">
+<meta property="og:description" content="{{ page.desc }}">
+<meta property="og:url" content="{{ site.domain }}{{ page.path }}">
+<meta property="og:image" content="{{ site.domain }}/assets/img/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="/assets/css/site.css?v={{ build_id }}">
+{% block head %}{% endblock %}
+<script type="application/ld+json">
+{{ jsonld|safe }}
+</script>
+</head>
+<body class="page-{{ page_id }}">
+<a class="skip" href="#main">본문으로 바로가기</a>
+<header class="site-header" id="top">
+  <div class="wrap header-row">
+    <a class="brand" href="/" aria-label="공백 홈으로">
+      <svg class="brand-mark" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+        <rect x="1.5" y="1.5" width="31" height="31" rx="4" fill="none" stroke="currentColor" stroke-width="2.2"/>
+        <rect x="7" y="7" width="9" height="9" fill="currentColor"/>
+        <rect x="18" y="7" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2"/>
+        <rect x="7" y="18" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2"/>
+        <rect x="18" y="18" width="9" height="9" fill="var(--point)"/>
+      </svg>
+      <span class="brand-word">GONG BAEK</span>
+      <span class="brand-ko">공백</span>
+    </a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <ul>
+        {% for key, label, href in nav %}
+        <li><a href="{{ href }}"{% if page_id == key or (page_id == 'insight' and key == 'insights') or (page_id == 'case' and key == 'cases') %} aria-current="page"{% endif %}>{{ label }}</a></li>
+        {% endfor %}
+      </ul>
+    </nav>
+    <div class="header-actions">
+      <a class="link-quiet" href="/assessment">사전진단</a>
+      <a class="btn btn-primary btn-sm" href="/contact">공간 검토 요청</a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="메뉴 열기">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+  <div class="mobile-menu" id="mobile-menu" hidden>
+    <ul>
+      {% for key, label, href in nav %}
+      <li><a href="{{ href }}">{{ label }}</a></li>
+      {% endfor %}
+      <li><a href="/assessment">공간 사전진단</a></li>
+      <li><a href="/contact">문의하기</a></li>
+    </ul>
+    <div class="mobile-menu-foot">
+      <a href="tel:{{ site.phone|replace('-','') }}">{{ site.phone }}</a>
+      <a href="mailto:{{ site.email }}">{{ site.email }}</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+{% block main %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="brand brand-footer"><span class="brand-word">GONG BAEK</span><span class="brand-ko">공백</span></div>
+        <p>{{ site.tagline }}</p>
+      </div>
+      <nav class="footer-nav" aria-label="바닥글 메뉴">
+        <div>
+          <strong>서비스</strong>
+          <a href="/solution">공실개발 솔루션</a>
+          <a href="/models">개발모델</a>
+          <a href="/cases">개발사례</a>
+          <a href="/assessment">공간 사전진단</a>
+        </div>
+        <div>
+          <strong>회사</strong>
+          <a href="/about">회사소개</a>
+          <a href="/brands">운영브랜드</a>
+          <a href="/partners">파트너</a>
+          <a href="/insights/">인사이트</a>
+        </div>
+        <div>
+          <strong>문의</strong>
+          <a href="/contact">공간 검토 요청</a>
+          <a href="mailto:{{ site.email }}">{{ site.email }}</a>
+          <a href="tel:{{ site.phone|replace('-','') }}">{{ site.phone }}</a>
+        </div>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-legal">
+        <span>{{ site.company }}</span>
+        <span>대표 {{ site.ceo }}</span>
+        <span>{{ site.address }}</span>
+        <span>사업자등록번호 {{ site.biz_no }}</span>
+      </p>
+      <p class="footer-links">
+        <a href="/privacy"><b>개인정보처리방침</b></a>
+        <a href="/terms">이용약관</a>
+        <span>© {{ site.year }} {{ site.company_en }}</span>
+      </p>
+    </div>
+  </div>
+</footer>
+
+{% if page_id not in ['contact'] %}
+<div class="sticky-cta" aria-hidden="false">
+  <a class="btn btn-primary" href="/contact">공간 검토 요청하기</a>
+</div>
+{% endif %}
+
+<script src="/assets/js/site.js?v={{ build_id }}" defer></script>
+{% block scripts %}{% endblock %}
+{% if site.cf_analytics_token %}
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "{{ site.cf_analytics_token }}"}'></script>
+{% endif %}
+</body>
+</html>

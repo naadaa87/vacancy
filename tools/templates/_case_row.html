@@ -1,0 +1,22 @@
+{% set mult = (c.sales_after / c.rent_before) %}
+<article class="case-row" id="case-{{ c.id }}" data-tags="{{ c.tags|join(',') }}">
+  <div>
+    <h3>{{ c.title }}</h3>
+    <dl class="case-spec">
+      <dt>상권</dt><dd>{{ c.area_label }}</dd>
+      <dt>층수</dt><dd>{{ c.floor }}{% if c.ev is sameas false %} · 엘리베이터 없음{% endif %}</dd>
+      <dt>전용면적</dt><dd>{{ c.pyeong }}평</dd>
+    </dl>
+    <div class="case-tags">{% for t in c.tags %}<span>{{ t }}</span>{% endfor %}</div>
+  </div>
+  <div class="case-story">
+    <p><span class="lbl">문제</span>{{ c.problem }}</p>
+    <p><span class="lbl">판단</span>{{ c.judgement }}</p>
+    <p class="case-model"><b>{{ c.model }}</b> · 담당 범위: {{ c.scope }}</p>
+  </div>
+  <div class="case-result">
+    <div class="r"><span class="k">공실 당시 기대임대료</span><span class="v num">월 {{ c.rent_before }}만 원</span></div>
+    <div class="r"><span class="k">개발 후 월평균 매출</span><span class="v v-big num">{{ c.sales_after }}만 원</span></div>
+    <span class="mult"><i style="width:{{ (mult * 14)|round|int }}px"></i>기대임대료 대비 {{ '%.1f'|format(mult) }}배</span>
+  </div>
+</article>

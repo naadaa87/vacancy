@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block main %}
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <h1>비어 있는 공간을,<br>운영 가능한<br>수익자산으로.</h1>
+      <p class="hero-lead">공백은 상가와 건물의 조건을 진단하고, 공간에 맞는 수익모델을 기획해 브랜딩·인테리어·오픈·운영체계까지 연결합니다. 임차인을 기다리는 대신, 공간이 고객과 매출을 만들 수 있는 구조를 검토합니다.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary btn-lg" href="/contact">공간 검토 요청하기</a>
+        <a class="btn btn-outline btn-lg" href="/cases">개발 사례 보기</a>
+      </div>
+      <div class="hero-claims">
+        {% for c in claims %}
+        <div class="claim">
+          <span class="claim-v"><b>{{ c.value }}</b><small>{{ c.unit }}</small></span>
+          <span class="claim-l">{{ c.label }}</span>
+        </div>
+        {% endfor %}
+        <p class="claims-note">자사 기준, {{ site.claims_asof }} 누적. <a href="/about#claims">집계 기준 보기</a></p>
+      </div>
+    </div>
+    {% include "_building.html" %}
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap stat-split">
+    <div class="big-stat">
+      <span class="v num">{{ market.value }}<small>{{ market.unit }}</small></span>
+      <span class="l">{{ market.label }} · {{ market.period }}</span>
+      <span class="s">출처: <a href="{{ market.source_url }}" target="_blank" rel="noopener">{{ market.source }}</a></span>
+      <div class="stat-sub">
+        {% for x in market.sub %}<div><span class="k">{{ x.label }}</span><span class="n">{{ x.value }}</span></div>{% endfor %}
+      </div>
+    </div>
+    <div class="stat-copy">
+      <h2>임대조건만 낮춰서는<br>공실의 원인이 바뀌지 않습니다.</h2>
+      <p style="margin-top:20px">공실이 길어질수록 관리비·이자·세금은 그대로 남고, 건물의 첫인상과 임대 경쟁력은 약해집니다. 3층 이상이거나 연면적 330㎡를 넘는 중대형 상가는 공실률이 가장 높은 구간이고, 엘리베이터 없는 상층부와 지하는 그중에서도 가장 오래 비어 있습니다.</p>
+      <p>필요한 것은 월세 조정만이 아닙니다. 이 공간을 누가, 어떤 목적으로, 어떻게 쓰게 할지를 다시 정하는 일입니다. 공백은 그 질문에서 시작합니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="grid-2" style="align-items:start">
+      <div>
+        <div class="section-head" style="margin-bottom:28px">
+          <h2>모든 공실에 같은 업종을<br>넣지 않습니다.</h2>
+          <p>입지와 면적만으로 결정하지 않습니다. 아래 여섯 가지를 함께 보고, 가능한 모델과 피해야 할 모델을 먼저 나눕니다.</p>
+        </div>
+        <ul class="criteria">
+          {% for j in judgement %}<li><span class="k">{{ j.k }}</span><span class="v">{{ j.v }}</span></li>{% endfor %}
+        </ul>
+        <div class="section-foot"><a class="btn btn-outline" href="/assessment">3분 사전진단 해보기</a></div>
+      </div>
+      <div class="doc-sample" aria-label="공간진단 리포트 요약 예시">
+        <div class="doc-h"><b>공간진단 리포트 · 요약</b><span>예시 · 서울 ○○구 ○○동 / 4층 / 32평</span></div>
+        <table>
+          <tr><td>건축물 용도</td><td>제2종 근린생활시설 <span class="tag tag-ok">가능</span></td></tr>
+          <tr><td>층수·동선</td><td>4층 · EV 없음 · 독립 출입 가능 <span class="tag tag-ok">예약형 적합</span></td></tr>
+          <tr><td>소음</td><td>하층 사무실 · 야간 공실 <span class="tag tag-ok">허용</span></td></tr>
+          <tr><td>주차</td><td>건물 내 없음 · 공영주차장 180m <span class="tag tag-warn">확인</span></td></tr>
+          <tr><td>급배수</td><td>층 내 화장실 1개 · 급수 이설 필요 <span class="tag tag-warn">공사비 반영</span></td></tr>
+          <tr><td>계약기간</td><td>5년 가능 <span class="tag tag-ok">회수 가능</span></td></tr>
+          <tr><td>운영주체</td><td>임대인 비참여 희망 <span class="tag tag-neutral">운영위탁형</span></td></tr>
+          <tr><td>1차 판단</td><td><b>예약형 공간대여 검토 권장</b> · 무인 F&amp;B 제외(가시성 부족)</td></tr>
+        </table>
+        <p class="doc-foot">실제 리포트는 현장진단 후 작성되며, 수익이나 인허가 가능성을 보장하지 않습니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>진단에서 운영개선까지,<br>다섯 단계로 진행합니다.</h2>
+      <p>필요한 단계만 선택할 수 있습니다. 마스터리스·공동개발은 공간 조건과 투자구조를 검토한 뒤 제안합니다.</p>
+    </div>
+    <ol class="process">
+      {% for p in process %}
+      <li>
+        <span class="n num">{{ p.n }}</span>
+        <h3>{{ p.name }}</h3>
+        <p>{{ p.what }}</p>
+        <div class="out">받으시는 것<b>{{ p.out }}</b></div>
+      </li>
+      {% endfor %}
+    </ol>
+    <div class="section-foot"><a class="link-more" href="/solution">솔루션 자세히 보기</a></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>운영 이익과 매각 차익,<br>두 흐름을 함께 봅니다.</h2>
+      <p>부동산 매입·매각은 긴 계획이 필요합니다. 그 사이의 공실은 매달 비용을 만들고, 운영 중인 공간은 매달 현금흐름을 만듭니다. 공백은 매각 시점까지의 운영과 매각 시점의 가치를 하나의 계획으로 봅니다.</p>
+    </div>
+    <div class="revenue">
+      <div class="streams">
+        <div class="stream">
+          <div class="i" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 15l4-5 3 3 4-6 3 3"/><path d="M3 18h14"/></svg></div>
+          <div><h3>운영 이익</h3><p>예약·무인 운영 공간은 매달 매출이 발생합니다. 임대료만 기다리던 공간이 현금흐름을 만드는 공간으로 바뀝니다.</p></div>
+        </div>
+        <div class="stream s2">
+          <div class="i" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 17V9l6-5 6 5v8"/><path d="M8 17v-5h4v5"/></svg></div>
+          <div><h3>매각 차익</h3><p>공실은 건물 노후화와 가치 하락으로 이어집니다. 운영 실적이 있는 건물은 임대현황과 매수자 설명자료가 달라집니다.</p></div>
+        </div>
+      </div>
+      {% include "_simulation.html" %}
+    </div>
+    <p class="footnote">{{ simulation.note }} 매각 차익은 보장되지 않으며, 부동산 중개가 포함되는 경우 관련 법령과 법정 중개보수 기준을 우선 적용합니다.</p>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>결과보다 먼저, 어떤 문제를<br>어떻게 풀었는지 보여드립니다.</h2>
+      <p>엘리베이터 없는 상층부, 지하, 지방 상권처럼 일반 임대로 풀리지 않던 공간입니다. 조건·문제·판단·결과를 같은 틀로 적습니다.</p>
+    </div>
+    <div class="case-list">
+      {% for c in cases[:3] %}
+      {% include "_case_row.html" %}
+      {% endfor %}
+    </div>
+    <p class="footnote">{{ case_footnote }}</p>
+    <div class="section-foot"><a class="btn btn-ink" href="/cases">전체 사례 보기</a></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>공간 조건에 따라<br>모델을 조합합니다.</h2>
+      <p>백 가지 업종 대신 다섯 개 모델군으로 검토합니다. 숙박시설 활용은 적법성 확인이 전제이므로 개발모델 페이지에서 따로 설명합니다.</p>
+    </div>
+    <ul class="model-strip">
+      {% for m in models[:5] %}<li><b>{{ m.name }}</b><p>{{ m.examples }}</p></li>{% endfor %}
+    </ul>
+    <div class="section-foot"><a class="link-more" href="/models">개발모델 자세히 보기</a></div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap why">
+    <div class="why-copy">
+      <h2>공간을 만든 경험과<br>운영한 경험이 함께 있습니다.</h2>
+      <p style="margin-top:20px">블랭크는 공간을 제안만 해 온 회사가 아닙니다. 2015년 모임공간 운영을 시작해 쏘플파티룸, 무인 디저트카페 등 예약형·무인형 공간을 직접 기획하고 운영해 왔습니다.</p>
+      <p>어떤 기능이 매출을 만들고 어떤 운영비가 반복해서 발생하는지를 현장에서 확인했고, 그 기준을 개발안에 그대로 반영합니다. 그래서 모든 공간을 개발하지는 않습니다. 구조가 맞지 않으면 보류 이유와 다른 선택지를 함께 드립니다.</p>
+      <div class="section-foot"><a class="btn btn-outline" href="/about">회사소개</a><a class="link-more" href="/brands">운영 브랜드와 시스템</a></div>
+    </div>
+    <div class="brand-stack">
+      {% for b in brands if b.public and b.status in ['core','active'] %}
+      <div class="brand-item {{ b.status }}">
+        <div class="nm">{{ b.name }}<small>{{ b.en }}</small></div>
+        <div><p>{{ b.desc }}</p>{% if b.meta %}<span class="st">{{ b.meta }}</span>{% endif %}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap assess-teaser">
+    <div>
+      <h2>이 공간은 무엇부터<br>확인해야 할까요?</h2>
+      <p class="muted" style="margin-top:20px;max-width:34em">목표, 층수, 면적, 용도, 설비와 운영조건을 입력하면 모델별 적합도와 확인 과제, 다음 단계를 안내합니다. 입력값은 서버로 전송되지 않습니다.</p>
+      <p class="tiny" style="margin-top:14px">온라인 결과는 사전 참고용이며, 최종 판단은 현장·인허가·수지 검토 후에 이루어집니다.</p>
+      <div class="section-foot"><a class="btn btn-primary" href="/assessment">3분 사전진단 시작</a></div>
+    </div>
+    <div class="assess-preview" aria-hidden="true">
+      <p class="q">이 공간으로 무엇을 하고 싶으세요?</p>
+      <div class="opts"><span>고정 임대료</span><span class="on">운영수익</span><span>매각 전 밸류업</span><span>직접 창업</span></div>
+      <div class="bars">
+        <div class="hi"><span>예약형 공간대여</span><i style="--w:86%"></i><span>높음</span></div>
+        <div><span>복합형</span><i style="--w:58%"></i><span>보통</span></div>
+        <div><span>체험형 공간</span><i style="--w:44%"></i><span>보통</span></div>
+        <div><span>무인 F&amp;B</span><i style="--w:22%"></i><span>확인 필요</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% include "_cta.html" %}
+{% endblock %}

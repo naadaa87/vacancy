@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="page-head">
+  <div class="wrap">
+    <div class="crumb"><a href="/">홈</a><span>/</span><span>개발모델</span></div>
+    <h1>공간 조건에 따라 모델을 조합합니다.</h1>
+    <p>유동이 적은 상층부와 지하에는 예약으로 찾아오는 수요를, 가시성 좋은 저층에는 무인 운영을 붙입니다. 모델마다 유리한 조건과 반드시 확인할 조건이 다릅니다.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="models">
+      {% for m in models %}
+      <article class="model{% if m.id == 'stay' %} is-stay{% endif %}" id="model-{{ m.id }}">
+        <div>
+          <h3>{{ m.name }}</h3>
+          <p class="ex">{{ m.examples }}</p>
+        </div>
+        <p class="pt">{{ m.point }}</p>
+        <div class="col"><b>유리한 조건</b><ul>{% for g in m.good %}<li>{{ g }}</li>{% endfor %}</ul></div>
+        <div class="col chk"><b>먼저 확인할 것</b><ul>{% for k in m.check %}<li>{{ k }}</li>{% endfor %}</ul></div>
+      </article>
+      {% endfor %}
+    </div>
+    <div class="notice" style="margin-top:28px">{{ model_notice }}</div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>왜 예약형 모델이 비선호층에 강한가</h2>
+      <p>2015년부터 지금까지 유행 없이 꾸준히 확인되는 수요가 있습니다. ‘우리끼리 사용 목적에 맞는 단독 공간’을 원하는 사람들입니다.</p>
+    </div>
+    <div class="grid-3">
+      <div>
+        <h3>층수에 덜 민감합니다</h3>
+        <p class="muted" style="margin-top:10px">검색하고 예약한 뒤 찾아오는 고객에게 4층, 5층, 지하는 결정적인 장벽이 아닙니다. 방음과 독립 출입이 더 중요합니다.</p>
+      </div>
+      <div>
+        <h3>대로변일 필요가 없습니다</h3>
+        <p class="muted" style="margin-top:10px">모임 공간은 간판을 보고 들어오는 업종이 아닙니다. 이면도로나 역에서 떨어진 입지도 상품력이 있으면 운영됩니다.</p>
+      </div>
+      <div>
+        <h3>단가가 높게 형성됩니다</h3>
+        <p class="muted" style="margin-top:10px">함께 놀고 모이는 공간의 고객은 무조건 저렴한 곳을 찾지 않습니다. 시설과 분위기가 좋으면 그만큼 지불합니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% include "_cta.html" %}
+{% endblock %}

@@ -1,0 +1,34 @@
+{% set s = simulation %}
+{% set total = s.operating + s.exit %}
+{% set mult = (total / s.invest) %}
+<div class="chart-card">
+  <div class="c-title"><b>{{ s.months }}개월 운영 후 매각 시나리오 (예시)</b><span>단위: 만 원</span></div>
+  <svg class="sim" viewBox="0 0 380 300" role="img" aria-label="투자 원금 {{ '{:,}'.format(s.invest) }}만 원이 {{ s.months }}개월 운영 수익 {{ '{:,}'.format(s.operating) }}만 원과 매각 차익 {{ '{:,}'.format(s.exit) }}만 원으로 이어지는 예시 막대 그래프">
+    {# scale: 220px for total #}
+    {% set k = 220 / total %}
+    {% set h_inv = (s.invest * k) %}
+    {% set h_op = (s.operating * k) %}
+    {% set h_ex = (s.exit * k) %}
+    <line class="axis" x1="40" y1="250" x2="360" y2="250"/>
+    <!-- 투자 시점 -->
+    <rect class="bar-base" x="80" y="{{ 250 - h_inv }}" width="90" height="{{ h_inv }}"/>
+    <text class="lab-b" x="125" y="{{ 250 - h_inv - 10 }}" text-anchor="middle">{{ '{:,}'.format(s.invest) }}</text>
+    <text class="lab" x="125" y="{{ 250 - h_inv + 22 }}" text-anchor="middle">투자 원금</text>
+    <text class="lab-b" x="125" y="272" text-anchor="middle">투자 시점</text>
+    <!-- 매각 시점 -->
+    <rect class="bar-exit" x="240" y="{{ 250 - h_op - h_ex }}" width="90" height="{{ h_ex }}"/>
+    <rect class="bar-op" x="240" y="{{ 250 - h_op }}" width="90" height="{{ h_op }}"/>
+    <text class="lab-w" x="285" y="{{ 250 - h_op - h_ex/2 - 2 }}" text-anchor="middle">매각 차익</text>
+    <text class="lab-w2" x="285" y="{{ 250 - h_op - h_ex/2 + 12 }}" text-anchor="middle">{{ '{:,}'.format(s.exit) }}</text>
+    <text class="lab-w" x="285" y="{{ 250 - h_op/2 - 2 }}" text-anchor="middle">운영 수익</text>
+    <text class="lab-w2" x="285" y="{{ 250 - h_op/2 + 12 }}" text-anchor="middle">{{ '{:,}'.format(s.operating) }}</text>
+    <text class="mult" x="285" y="{{ 250 - h_op - h_ex - 10 }}" text-anchor="middle">{{ '%.2f'|format(mult) }}배</text>
+    <text class="lab-b" x="285" y="272" text-anchor="middle">매각 시점</text>
+    <text class="lab" x="285" y="288" text-anchor="middle" font-size="11">{{ s.months }}개월 후</text>
+  </svg>
+  <div class="sim-legend">
+    <span><i style="background:var(--paper-3)"></i>투자 원금 {{ '{:,}'.format(s.invest) }}만 원</span>
+    <span><i style="background:var(--navy)"></i>{{ s.months }}개월 운영 수익 {{ '{:,}'.format(s.operating) }}만 원 (원금 대비 {{ (s.operating / s.invest * 100)|round|int }}%)</span>
+    <span><i style="background:var(--point)"></i>매각 차익 {{ '{:,}'.format(s.exit) }}만 원 (원금 대비 {{ (s.exit / s.invest * 100)|round|int }}%)</span>
+  </div>
+</div>

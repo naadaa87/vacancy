@@ -1,0 +1,93 @@
+<figure class="hero-visual" aria-labelledby="bld-title">
+<svg class="building" viewBox="0 0 480 400" data-mobile-viewbox="22 14 340 380" role="img" aria-labelledby="bld-title bld-desc">
+  <title id="bld-title">공실 건물의 층별 전환 예시</title>
+  <desc id="bld-desc">엘리베이터가 없는 6개 층 건물에서 지하 1층은 체험형 게임룸, 1층은 무인 디저트카페, 3층은 촬영 스튜디오, 5층은 프라이빗 파티룸으로 전환하고, 4층은 사전검토 중, 2층은 기존 임차가 유지되는 예시 단면도.</desc>
+  <defs>
+    <pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="7" stroke="#e5501c" stroke-width="1.4" stroke-opacity=".35"/>
+    </pattern>
+  </defs>
+
+  <!-- 계단실 -->
+  <g class="stairs">
+    <rect x="44" y="40" width="26" height="260"/>
+    <path d="M48 62h18M48 84h18M48 106h18M48 128h18M48 150h18M48 172h18M48 194h18M48 216h18M48 238h18M48 260h18M48 282h18"/>
+  </g>
+  <text class="t t-blank" x="30" y="30" font-size="11">계단 · EV 없음</text>
+
+  <!-- 건물 외곽 -->
+  <rect class="frame" x="70" y="40" width="230" height="260"/>
+  <line class="ground" x1="20" y1="300" x2="330" y2="300"/>
+  <rect x="70" y="300" width="230" height="56" fill="none" stroke="#141619" stroke-width="2.4" stroke-dasharray="5 4"/>
+
+  <!-- 5F 개발 -->
+  <g class="fill-anim d4">
+    <rect class="floor-dev" x="72" y="42" width="226" height="48"/>
+    <rect class="floor-dev-hatch" x="72" y="42" width="226" height="48"/>
+    <text class="t t-floor" x="80" y="70">5F</text>
+    <text class="t t-label" x="112" y="70">프라이빗 파티룸</text>
+    <line class="leader anno" x1="298" y1="66" x2="318" y2="66"/>
+    <text class="t anno" x="324" y="63">예약형 공간대여</text>
+    <text class="t t-blank anno" x="324" y="78" font-size="11">야간·주말 수요</text>
+  </g>
+
+  <!-- 4F 검토 중 -->
+  <g>
+    <rect class="floor-blank" x="72" y="94" width="226" height="48"/>
+    <text class="t t-floor" x="80" y="122">4F</text>
+    <text class="t t-blank" x="112" y="122">공실 · 사전검토 중</text>
+  </g>
+
+  <!-- 3F 개발 -->
+  <g class="fill-anim d3">
+    <rect class="floor-dev" x="72" y="146" width="226" height="48"/>
+    <rect class="floor-dev-hatch" x="72" y="146" width="226" height="48"/>
+    <text class="t t-floor" x="80" y="174">3F</text>
+    <text class="t t-label" x="112" y="174">촬영 스튜디오</text>
+    <line class="leader anno" x1="298" y1="170" x2="318" y2="170"/>
+    <text class="t anno" x="324" y="167">예약형 공간대여</text>
+    <text class="t t-blank anno" x="324" y="182" font-size="11">주간 수요</text>
+  </g>
+
+  <!-- 2F 기존 임차 -->
+  <g>
+    <rect x="72" y="198" width="226" height="48" fill="#f4f5f3" stroke="#cfd3d0"/>
+    <text class="t t-floor" x="80" y="226">2F</text>
+    <text class="t t-blank" x="112" y="226">기존 임차 유지 · 사무실</text>
+  </g>
+
+  <!-- 1F 개발 -->
+  <g class="fill-anim d2">
+    <rect class="floor-dev" x="72" y="250" width="226" height="48"/>
+    <rect class="floor-dev-hatch" x="72" y="250" width="226" height="48"/>
+    <text class="t t-floor" x="80" y="278">1F</text>
+    <text class="t t-label" x="112" y="278">무인 디저트카페</text>
+    <line class="leader anno" x1="298" y1="274" x2="318" y2="274"/>
+    <text class="t anno" x="324" y="271">무인 F&amp;B</text>
+    <text class="t t-blank anno" x="324" y="286" font-size="11">24시간 · 배후 수요</text>
+  </g>
+
+  <!-- B1 개발 -->
+  <g class="fill-anim d1">
+    <rect class="floor-dev" x="72" y="302" width="226" height="52"/>
+    <rect class="floor-dev-hatch" x="72" y="302" width="226" height="52"/>
+    <text class="t t-floor" x="80" y="332">B1</text>
+    <text class="t t-label" x="112" y="332">체험형 게임룸</text>
+    <line class="leader anno" x1="298" y1="328" x2="318" y2="328"/>
+    <text class="t anno" x="324" y="325">체험형 공간</text>
+    <text class="t t-blank anno" x="324" y="340" font-size="11">방음 · 독립 출입</text>
+  </g>
+
+  <!-- 범례 -->
+  <g>
+    <rect x="70" y="372" width="14" height="10" class="floor-dev"/>
+    <rect x="70" y="372" width="14" height="10" class="floor-dev-hatch"/>
+    <text class="t" x="90" y="381" font-size="11">공백이 개발·운영</text>
+    <rect x="208" y="372" width="14" height="10" class="floor-blank"/>
+    <text class="t" x="228" y="381" font-size="11">공실</text>
+    <rect x="276" y="372" width="14" height="10" fill="#f4f5f3" stroke="#cfd3d0"/>
+    <text class="t" x="296" y="381" font-size="11">기존 임차</text>
+  </g>
+</svg>
+<figcaption class="tiny" style="margin-top:10px">전환 예시 단면도. 층별 모델은 건물 조건과 수요에 따라 달라집니다.</figcaption>
+</figure>

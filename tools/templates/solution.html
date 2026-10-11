@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="page-head">
+  <div class="wrap">
+    <div class="crumb"><a href="/">홈</a><span>/</span><span>솔루션</span></div>
+    <h1>공실을 임대 가능한 상태가 아니라, 운영 가능한 상태로 바꿉니다.</h1>
+    <p>공간의 조건을 확인하고 수익모델을 비교한 뒤, 필요한 경우 브랜딩·인테리어·오픈·운영체계까지 실행합니다. 서비스 범위는 공간과 목표에 따라 다르게 구성합니다.</p>
+    <div class="acts"><a class="btn btn-primary" href="/contact">공간 검토 요청하기</a><a class="btn btn-outline" href="/assessment">3분 사전진단</a></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>다섯 단계, 단계마다 받으시는 것이 있습니다.</h2>
+      <p>1차 검토는 비용이 없습니다. 현장진단부터는 범위에 따라 제안서를 드리고, 필요한 단계만 선택할 수 있습니다.</p>
+    </div>
+    <ol class="process">
+      {% for p in process %}
+      <li>
+        <span class="n num">{{ p.n }}</span>
+        <h3>{{ p.name }}</h3>
+        <p>{{ p.what }}</p>
+        <div class="out">받으시는 것<b>{{ p.out }}</b></div>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>서비스 유형</h2>
+      <p>공간이 어느 단계에 있는지에 따라 다섯 가지 중 하나, 또는 둘을 조합합니다.</p>
+    </div>
+    <ul class="svc">
+      {% for s in service_types %}<li><b>{{ s.name }}</b><p>{{ s.desc }}</p></li>{% endfor %}
+    </ul>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>산출물</h2>
+      <p>말로 설명하지 않고 문서로 드립니다. 실제 제공 범위는 계약서와 제안서에 명시합니다.</p>
+    </div>
+    <ul class="deliverables">
+      {% for d in deliverables %}<li>{{ d }}</li>{% endfor %}
+    </ul>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>협업 방식</h2>
+      <p>누가 운영하고 누가 수익과 리스크를 가져가는지에 따라 세 가지로 나눕니다. 협력 대가와 조건은 역할을 구분해 별도 서면 계약으로 정합니다.</p>
+    </div>
+    <ul class="collab">
+      {% for c in collab %}
+      <li>
+        <b>{{ c.name }}</b>
+        <p>{{ c.who }}</p>
+        <dl><dt>맞는 분</dt><dd>{{ c.fit }}</dd><dt>기대 효과</dt><dd>{{ c.effect }}</dd></dl>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="footnote">마스터리스·공동개발은 선별 프로젝트에 한해 공간 조건과 투자구조를 검토한 뒤 제안합니다. 부동산 중개가 포함되는 경우 공인중개사법과 법정 중개보수 기준을 우선 적용합니다.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>자주 묻는 질문</h2>
+    </div>
+    <div class="faq">
+      {% for f in faq %}
+      <details><summary>{{ f.q }}</summary><div class="a">{{ f.a }}</div></details>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% include "_cta.html" %}
+{% endblock %}

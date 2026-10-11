@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="page-head">
+  <div class="wrap">
+    <div class="crumb"><a href="/">홈</a><span>/</span><span>인사이트</span></div>
+    <h1>공실개발 실무에서 반복해서 확인한 기준을 적습니다.</h1>
+    <p>엘리베이터 없는 고층, 숙박업과 공간대여의 차이, 무인운영의 실제, 손익계산서에 빠지기 쉬운 비용. 상담에서 가장 자주 나오는 질문부터 정리했습니다.</p>
+  </div>
+</section>
+<section class="section">
+  <div class="wrap">
+    <div class="post-list">
+      {% for a in insights %}
+      <article class="post-item">
+        <div class="meta">{{ a.date }}<br>읽는 시간 {{ a.read }}</div>
+        <div>
+          <h3><a href="/insights/{{ a.slug }}">{{ a.title }}</a></h3>
+          <p>{{ a.summary }}</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% include "_cta.html" %}
+{% endblock %}

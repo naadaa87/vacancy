@@ -1,0 +1,6 @@
+# 기존 주소 → 새 주소 (301)
+/intro        /about     301
+/start        /contact   301
+/seminar      /solution  301
+/article      /insights/ 301
+/index.html   /          301

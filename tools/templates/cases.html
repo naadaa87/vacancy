@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="page-head">
+  <div class="wrap">
+    <div class="crumb"><a href="/">홈</a><span>/</span><span>개발사례</span></div>
+    <h1>일반 임대로 풀리지 않던 공간의 기록입니다.</h1>
+    <p>수익 숫자만 나열하지 않습니다. 공간의 조건, 왜 비어 있었는지, 어떤 모델을 골랐고 다른 모델은 왜 제외했는지, 공백이 맡은 범위와 결과를 같은 틀로 적습니다.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="case-filter" role="group" aria-label="사례 필터">
+      <button type="button" aria-pressed="true" data-filter="all">전체 {{ cases|length }}건</button>
+      {% for t in case_tags %}<button type="button" aria-pressed="false" data-filter="{{ t }}">{{ t }}</button>{% endfor %}
+    </div>
+    <div class="case-list" id="case-list">
+      {% for c in cases %}{% include "_case_row.html" %}{% endfor %}
+      <p class="case-empty" id="case-empty" hidden>해당 조건의 공개 사례가 아직 없습니다. 비슷한 조건이라면 문의를 남겨주세요.</p>
+    </div>
+    <p class="footnote">{{ case_footnote }} 기대임대료는 당시 인근 유사 매물과 중개 의견을 기준으로 산정했습니다.</p>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>공실 유형별 접근</h2>
+      <p>340개가 넘는 공간을 다루며 반복해서 만난 유형입니다. 같은 유형이라도 건물 조건에 따라 판단은 달라집니다.</p>
+    </div>
+    <ul class="type-grid">
+      {% for t in case_types %}<li><b>{{ t.name }}</b><p>{{ t.desc }}</p></li>{% endfor %}
+    </ul>
+  </div>
+</section>
+
+{% include "_cta.html" %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function(){
+  var btns=document.querySelectorAll('.case-filter button');
+  var rows=document.querySelectorAll('#case-list .case-row');
+  var empty=document.getElementById('case-empty');
+  btns.forEach(function(b){b.addEventListener('click',function(){
+    btns.forEach(function(x){x.setAttribute('aria-pressed','false')});
+    b.setAttribute('aria-pressed','true');
+    var f=b.dataset.filter, n=0;
+    rows.forEach(function(r){var on=(f==='all')||r.dataset.tags.split(',').indexOf(f)>-1; r.hidden=!on; if(on)n++;});
+    empty.hidden=n>0;
+  })});
+})();
+</script>
+{% endblock %}

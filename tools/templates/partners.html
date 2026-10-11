@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="page-head">
+  <div class="wrap">
+    <div class="crumb"><a href="/">홈</a><span>/</span><span>파트너</span></div>
+    <h1>공간을 가진 사람, 개발하는 사람, 운영하는 사람이 역할을 나눕니다.</h1>
+    <p>공실 매물을 보유한 중개법인, 미임차 현장을 가진 시행사, 운영 가능한 브랜드와 프로젝트 단위로 협업합니다. 소개만 받는 구조가 아니라 누가 진단·계약·공사·운영을 맡는지부터 정리합니다.</p>
+    <div class="acts"><a class="btn btn-primary" href="/contact?type=partner">파트너 제안하기</a></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>세 주체의 역할</h2>
+      <p>프로젝트마다 역할표를 먼저 만듭니다. 역할이 적히지 않은 일은 아무도 하지 않게 되기 때문입니다.</p>
+    </div>
+    <div class="tri">
+      <div><b>임대인 · 소유주</b><p>공간과 계약 조건을 제공합니다. 투자 범위와 운영 참여 여부를 정합니다.</p></div>
+      <div class="me"><b>공백</b><p>진단, 모델·수지 비교, 디자인·시공 PM, 오픈, 운영체계 구축과 통합 시스템 운영을 맡습니다.</p></div>
+      <div><b>파트너</b><p>매물 소개, 현장 운영, 브랜드 입점, 시공·설비, 투자 중 하나 이상의 역할을 맡습니다.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>협업 유형</h2>
+    </div>
+    <ul class="ptype">
+      {% for p in partner_types %}
+      <li><b>{{ p.name }}</b><p class="who">{{ p.who }}</p><p class="how">{{ p.how }}</p></li>
+      {% endfor %}
+    </ul>
+    <div class="notice notice-navy" style="margin-top:28px">{{ partner_fee_notice }}</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap grid-2" style="align-items:start">
+    <div>
+      <h2>프로젝트를 소개해 주세요</h2>
+      <p class="muted" style="margin-top:18px">장기 공실, 준공 후 미임차, 명도 후 방치된 공간. 주소와 층수, 면적, 현재 상태만 있으면 1차 검토가 가능합니다. 중개가 포함되는 경우 역할과 보수 기준을 먼저 문서로 정합니다.</p>
+      <div class="section-foot"><a class="btn btn-primary" href="/contact?type=partner">프로젝트 소개하기</a></div>
+    </div>
+    <div>
+      <h2>브랜드를 등록해 주세요</h2>
+      <p class="muted" style="margin-top:18px">보유 브랜드와 희망 지역, 필요한 면적과 조건을 남겨두시면 조건이 맞는 공간이 생겼을 때 먼저 제안합니다. 운영 파트너도 같은 방식으로 등록할 수 있습니다.</p>
+      <div class="section-foot"><a class="btn btn-outline" href="/contact?type=tenant">입점·운영 파트너 등록</a></div>
+    </div>
+  </div>
+</section>
+
+{% include "_cta.html" %}
+{% endblock %}

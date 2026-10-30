@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="/assets/css/site.css?v={{ build_id }}">
 <link rel="stylesheet" href="/assets/css/admin.css?v={{ build_id }}">
+<link rel="stylesheet" href="/assets/css/center.css?v={{ build_id }}">
 </head>
 <body class="adm">
 <div class="adm-boot" id="boot">불러오는 중…</div>
@@ -41,10 +42,17 @@
     </a>
     <nav class="adm-nav" aria-label="관리 메뉴">
       <a href="#/" data-nav="dashboard">대시보드</a>
+      <span class="adm-nav-h">홈페이지</span>
       <a href="#/inquiries" data-nav="inquiries">문의 관리 <span class="badge" id="nav-open" hidden>0</span></a>
       <a href="#/members" data-nav="members">회원 관리</a>
       <a href="#/send" data-nav="send">자료·안내 발송</a>
       <a href="#/documents" data-nav="documents">발송 이력</a>
+      <span class="adm-nav-h">임대인센터</span>
+      <a href="#/projects" data-nav="projects">프로젝트 <span class="badge" id="nav-proj" hidden>0</span></a>
+      <a href="#/landlords" data-nav="landlords">임대인</a>
+      <a href="#/partners" data-nav="partners">파트너</a>
+      <a href="#/finance" data-nav="finance">정산 현황</a>
+      <span class="adm-nav-h">설정</span>
       <a href="#/settings" data-nav="settings">설정 점검</a>
     </nav>
     <div class="adm-me">
@@ -57,6 +65,7 @@
 </div>
 <div class="adm-toast" id="toast" role="status" aria-live="polite" hidden></div>
 
+<script src="/assets/js/project.js?v={{ build_id }}" defer></script>
 <script src="/assets/js/admin.js?v={{ build_id }}" defer></script>
 </body>
 </html>

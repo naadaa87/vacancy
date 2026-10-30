@@ -75,6 +75,9 @@
     get('/api/admin/inquiries?stage=open').then(function (j) {
       if (!j.ok) return; var n = (j.counts.new || 0) + (j.counts.review || 0); var b = $('#nav-open'); b.textContent = n; b.hidden = !n;
     });
+    get('/api/admin/center').then(function (j) {
+      if (!j.ok) return; var n = (j.counts.pending || 0) + (j.counts.overdue || 0); var b = $('#nav-proj'); b.textContent = n; b.hidden = !n;
+    });
   }
 
   /* ---------- 라우터 ---------- */
@@ -88,6 +91,14 @@
     [/^#\/documents/, 'documents', documents],
     [/^#\/document\/(\d+)/, 'documents', documentDetail],
     [/^#\/settings/, 'settings', settings],
+    [/^#\/projects/, 'projects', projects],
+    [/^#\/project\/new/, 'projects', projectNew],
+    [/^#\/project\/(\d+)/, 'projects', projectDetail],
+    [/^#\/landlords/, 'landlords', landlords],
+    [/^#\/landlord\/(\d+)/, 'landlords', landlordDetail],
+    [/^#\/partners/, 'partners', partners],
+    [/^#\/partner\/(\d+)/, 'partners', partnerDetail],
+    [/^#\/finance/, 'finance', finance],
   ];
   function route() {
     if (!ME) return;
@@ -107,7 +118,8 @@
   /* ---------- 대시보드 ---------- */
   function dashboard() {
     setTitle('대시보드');
-    get('/api/admin/stats').then(function (j) {
+    Promise.all([get('/api/admin/stats'), get('/api/admin/center')]).then(function (rs) {
+      var j = rs[0], C = rs[1].ok ? rs[1] : null;
       if (!j.ok) { view.innerHTML = '<p class="muted-s">' + errText(j) + '</p>'; return; }
       var I = j.inquiries, M = j.members, D = j.deliveries;
       var openRate = D.sent ? Math.round((D.opened || 0) / D.sent * 100) : 0;
@@ -118,6 +130,9 @@
       if (D.failed) todo.push(['red', '<a href="#/documents">메일 발송 실패 ' + D.failed + '건</a>', '받는 사람은 마이페이지(회원)에서 자료를 볼 수 있지만, 메일 설정을 확인해 주세요.']);
       if (!j.setup.mail) todo.push(['red', '<a href="#/settings">이메일 발송이 설정되지 않음</a>', '문의 알림, 고객 회신, 자료 발송 메일이 나가지 않습니다.']);
       else if (!j.setup.from) todo.push(['amber', '<a href="#/settings">보내는 주소(CONTACT_FROM) 미설정</a>', '도메인 인증 전 기본 주소로는 본인 메일로만 발송됩니다.']);
+      if (C && C.counts.pending) todo.push(['red', '<a href="#/projects">임대인센터 확인 대기 ' + C.counts.pending + '건</a>', '임대인 공개를 요청한 파트너 글·자료, 임대인이 보낸 자료입니다.']);
+      if (C && C.counts.overdue) todo.push(['amber', '<a href="#/projects">기한이 지난 추진사항 ' + C.counts.overdue + '건</a>', '담당 파트너에게 확인하거나 기한을 조정해 주세요.']);
+      if (C && C.counts.stale) todo.push(['', '<a href="#/projects">2주 넘게 움직임이 없는 프로젝트 ' + C.counts.stale + '건</a>', '진행 상황을 한 줄이라도 남겨 두면 임대인이 안심합니다.']);
       if (M.unverified) todo.push(['', '<a href="#/members?filter=unverified">이메일 미인증 회원 ' + M.unverified + '명</a>', '필요하면 회원 상세에서 인증 처리할 수 있습니다.']);
       if (!todo.length) todo.push(['green', '<b>지금 처리할 일이 없습니다.</b>', '새 문의가 들어오면 이곳과 메일로 알려드립니다.']);
 
@@ -146,7 +161,8 @@
             ((j.recent || []).map(function (r) { return '<li><span><a href="#/inquiry/' + r.id + '">#' + r.id + ' ' + esc(r.name) + '</a> · ' + esc(TYPE[r.type] || r.type) + ' · ' + esc(r.address) + '</span><span>' + stage(r.stage) + '</span></li>'; }).join('') || '<li class="muted-s">아직 문의가 없습니다.</li>') +
           '</ul></div>' +
         '</div><div>' +
-          '<div class="card"><h2>진행 단계</h2>' + hb(stageRows, function (k) { return STAGE[k]; }) + '</div>' +
+          (C ? '<div class="card"><h2>임대인센터 <small><a href="#/projects">프로젝트 ' + C.counts.active + '건 진행 중</a></small></h2>' + hb((C.by_stage || []).filter(function (r) { return r.n; }), function (k) { return (window.GBProject && GBProject.STAGE[k]) || k; }, true) + '</div>' : '') +
+          '<div class="card"><h2>문의 진행 단계</h2>' + hb(stageRows, function (k) { return STAGE[k]; }) + '</div>' +
           '<div class="card"><h2>문의 유형</h2>' + hb(j.by_type || [], function (k) { return TYPE[k] || k || '미지정'; }, true) + '</div>' +
           '<div class="card"><h2>고객 구분</h2>' + hb(j.by_role || [], function (k) { return ROLE[k] || k || '미지정'; }) + '</div>' +
         '</div></div>';
@@ -195,7 +211,7 @@
       var KN = { note: '메모', email: '메일 회신', doc: '자료 발송', stage: '단계 변경', in: '접수' };
       view.innerHTML = '<a class="back" href="#/inquiries">← 문의 목록</a>' +
         '<div class="v-head"><div><h1>' + esc(r.name) + ' <span class="muted-s">#' + r.id + '</span></h1><p>' + dt(r.created_at) + ' 접수 · ' + esc(TYPE[r.type] || r.type) + ' · ' + stage(r.stage) + '</p></div>' +
-        '<div class="acts"><a class="btn btn-outline btn-sm" href="tel:' + esc((r.phone || '').replace(/[^0-9+]/g, '')) + '">전화 걸기</a><a class="btn btn-primary btn-sm" href="#/send?inquiry=' + r.id + '">자료 보내기</a></div></div>' +
+        '<div class="acts"><a class="btn btn-outline btn-sm" href="tel:' + esc((r.phone || '').replace(/[^0-9+]/g, '')) + '">전화 걸기</a><a class="btn btn-outline btn-sm" href="#/project/new?inquiry=' + r.id + '">임대인센터 프로젝트로 만들기</a><a class="btn btn-primary btn-sm" href="#/send?inquiry=' + r.id + '">자료 보내기</a></div></div>' +
         '<div class="grid2"><div>' +
           '<div class="card"><h2>고객</h2><dl class="dl">' +
             '<dt>이름·소속</dt><dd>' + esc(r.name) + '</dd><dt>구분</dt><dd>' + esc(ROLE[r.role] || r.role || '-') + '</dd>' +
@@ -453,6 +469,318 @@
         '</ul></div></div></div>';
     });
   }
+
+  /* ==========================================================================
+     임대인센터 (프로젝트·임대인·파트너·정산)
+     ========================================================================== */
+  var G = window.GBProject;
+  var PROLE = G.ROLES, PKIND = G.KINDS;
+  var ACTIVE = ['intake', 'diagnosis', 'proposal', 'contract', 'execution', 'closing'];
+  function pstage(s) { return '<span class="st ps-' + s + '">' + esc(G.STAGE[s] || s) + '</span>'; }
+  function kindChips(k) { return String(k || '').split(',').filter(Boolean).map(function (x) { return '<span class="pj-chip kind">' + esc(PKIND[x] || x) + '</span>'; }).join(' '); }
+  function bar(done, total) { var p = total ? Math.round(done / total * 100) : 0; return '<div class="pbar"><i style="width:' + p + '%"></i></div><span class="age">' + done + '/' + total + '</span>'; }
+  var VIEW_MODE = 'list';
+
+  function projects() {
+    setTitle('프로젝트');
+    var p = qs(), grp = p.g || 'active', kind = '', partner = '', q = '';
+    Promise.all([get('/api/center/projects'), get('/api/admin/center'), get('/api/admin/partners')]).then(function (rs) {
+      var L = rs[0], C = rs[1], PT = rs[2];
+      if (!L.ok) { view.innerHTML = '<p class="muted-s">' + errText(L) + '</p>'; return; }
+      var items = L.items, cnt = C.ok ? C.counts : {};
+      var todo = [];
+      if (C.ok) {
+        C.pending_posts.forEach(function (x) { todo.push(['red', '<a href="#/project/' + x.project_id + '?tab=feed">' + esc(x.code || '') + ' 임대인 공개 요청 글</a>', esc((x.name || '파트너') + (x.company ? ' · ' + x.company : '')) + ' — ' + esc(x.body)]); });
+        C.pending_files.forEach(function (x) { todo.push(['red', '<a href="#/project/' + x.project_id + '?tab=files">' + esc(x.code || '') + (x.uploader_type === 'landlord' ? ' 임대인이 보낸 자료' : ' 임대인 공개 요청 자료') + '</a>', esc(x.name) + ' · ' + esc(x.title)]); });
+        C.overdue.slice(0, 8).forEach(function (x) { todo.push(['amber', '<a href="#/project/' + x.project_id + '?tab=tasks">' + esc(x.code || '') + ' 기한 지남: ' + esc(x.title) + '</a>', esc(x.ptitle) + ' · 기한 ' + esc(x.due_date)]); });
+        C.stale.slice(0, 5).forEach(function (x) { todo.push(['', '<a href="#/project/' + x.id + '">' + esc(x.code || '') + ' 2주 넘게 업데이트 없음</a>', esc(x.title) + ' · 마지막 ' + day(x.updated_at)]); });
+      }
+      view.innerHTML = '<div class="v-head"><div><h1>임대인센터 프로젝트</h1><p>건물·임대인별 프로젝트를 만들고, 파트너 권한과 진행 상황을 관리합니다. 파트너와 임대인은 <a href="/center" target="_blank" rel="noopener">vacancy.co.kr/center</a>에서 봅니다.</p></div>' +
+        '<div class="acts"><a class="btn btn-outline btn-sm" href="#/finance">정산 현황</a><a class="btn btn-primary btn-sm" href="#/project/new">새 프로젝트</a></div></div>' +
+        '<div class="kpis"><a class="kpi" href="#/projects?g=active"><div class="l">진행 중 프로젝트</div><div class="v">' + (cnt.active || 0) + '</div><div class="s">전체 ' + (cnt.total || 0) + '건</div></a>' +
+          '<div class="kpi' + (cnt.pending ? ' hot' : '') + '"><div class="l">확인 대기</div><div class="v">' + (cnt.pending || 0) + '</div><div class="s">임대인 공개 요청·임대인 자료</div></div>' +
+          '<div class="kpi' + (cnt.overdue ? ' hot' : '') + '"><div class="l">기한 지난 추진사항</div><div class="v">' + (cnt.overdue || 0) + '</div><div class="s">7일 안에 기한 ' + (cnt.due_soon || 0) + '건</div></div>' +
+          '<a class="kpi" href="#/finance"><div class="l">받을 돈 (예정·청구)</div><div class="v sm">' + (C.ok ? G.won(C.money.in_plan) : '-') + '</div><div class="s">줄 돈 ' + (C.ok ? G.won(C.money.out_plan) : '-') + '</div></a></div>' +
+        (todo.length ? '<div class="card" style="margin-bottom:14px"><h2>확인할 일 <small>' + todo.length + '건</small></h2><ul class="todo">' + todo.map(function (t) { return '<li><span class="dot ' + t[0] + '"></span><div>' + t[1] + '<p>' + t[2] + '</p></div></li>'; }).join('') + '</ul></div>' : '') +
+        '<div class="pills" id="pj-g"></div><div class="fbar"><select id="pj-k"><option value="">의뢰 유형 전체</option>' + Object.keys(PKIND).map(function (k) { return '<option value="' + k + '">' + PKIND[k] + '</option>'; }).join('') + '</select>' +
+          '<select id="pj-p"><option value="">파트너 전체</option>' + (PT.ok ? PT.items.map(function (x) { return '<option value="' + x.id + '">' + esc(x.name + (x.company ? ' · ' + x.company : '')) + '</option>'; }).join('') : '') + '</select>' +
+          '<input type="search" id="pj-q" placeholder="코드·프로젝트·주소·임대인·파트너 검색"><div class="seg" id="pj-v"><button type="button" data-v="list">목록</button><button type="button" data-v="board">단계별 보드</button></div></div>' +
+        '<div id="pj-list"></div>';
+      var G_ = { active: ['진행 중', function (x) { return ACTIVE.indexOf(x.stage) > -1; }], all: ['전체', function () { return true; }], done: ['완료', function (x) { return x.stage === 'done'; }], off: ['보류·중단', function (x) { return x.stage === 'hold' || x.stage === 'dropped'; }] };
+      function filtered() {
+        return items.filter(function (x) {
+          if (!G_[grp][1](x)) return false;
+          if (kind && String(x.kinds || '').split(',').indexOf(kind) < 0) return false;
+          if (partner && String(x.partner_ids || '').split(',').indexOf(partner) < 0) return false;
+          if (q) { var hay = [x.code, x.title, x.address, x.landlord_name, x.landlord_company, x.member_names, x.next_action].join(' ').toLowerCase(); if (hay.indexOf(q.toLowerCase()) < 0) return false; }
+          return true;
+        });
+      }
+      function flags(x) {
+        return (x.pending_posts + x.pending_files ? '<span class="st st-new">확인 ' + (x.pending_posts + x.pending_files) + '</span> ' : '') + (x.overdue ? '<span class="st st-review">지연 ' + x.overdue + '</span> ' : '') + (x.unread ? '<span class="st">새 글 ' + x.unread + '</span>' : '');
+      }
+      function draw() {
+        $('#pj-g').innerHTML = Object.keys(G_).map(function (k) { return '<button type="button" data-g="' + k + '" aria-pressed="' + (k === grp) + '">' + G_[k][0] + '<span class="c">' + items.filter(G_[k][1]).length + '</span></button>'; }).join('');
+        $$('#pj-v button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === VIEW_MODE)); });
+        var rows = filtered(), box = $('#pj-list');
+        if (!items.length) { box.innerHTML = '<div class="pj-empty">아직 프로젝트가 없습니다. 문의 상세에서 “임대인센터 프로젝트로 만들기”를 누르거나 <a href="#/project/new">새 프로젝트</a>를 만들어 시작하세요.</div>'; return; }
+        if (VIEW_MODE === 'board') {
+          var cols = ACTIVE.concat(grp === 'active' ? [] : ['done', 'hold', 'dropped']);
+          box.innerHTML = '<div class="board">' + cols.map(function (s) {
+            var cs = rows.filter(function (x) { return x.stage === s; });
+            return '<div class="board-col"><h3>' + esc(G.STAGE[s]) + '<span>' + cs.length + '</span></h3>' + cs.map(function (x) {
+              return '<a class="board-card" href="#/project/' + x.id + '"><span class="pj-code">' + esc(x.code || '') + '</span><b>' + esc(x.title) + '</b><span class="age">' + esc(x.landlord_name || '임대인 미연결') + ' · 파트너 ' + x.members + '</span>' + bar(x.tasks_done, x.tasks_total) + '<div>' + flags(x) + '</div></a>';
+            }).join('') + '</div>';
+          }).join('') + '</div>';
+          return;
+        }
+        box.innerHTML = '<div class="tbl-wrap"><table class="tbl pj-ptbl"><thead><tr><th>코드</th><th>프로젝트</th><th>임대인</th><th>단계</th><th>참여 파트너</th><th>진행</th><th>확인</th><th>최근 활동</th></tr></thead><tbody>' +
+          (rows.length ? rows.map(function (x) {
+            return '<tr data-id="' + x.id + '"><td class="nw"><span class="pj-code">' + esc(x.code || '') + '</span>' + (x.priority === 'high' ? '<br><span class="st st-new">중요</span>' : '') + '</td><td class="pj-ptitle"><b>' + esc(x.title) + '</b><div class="age">' + esc(x.address || '') + '</div><div class="pj-pk">' + kindChips(x.kinds) + '</div>' + (x.next_action ? '<div class="age">다음: ' + esc(x.next_action) + '</div>' : '') + '</td>' +
+              '<td class="nw">' + esc(x.landlord_name || '-') + (x.landlord_name ? '<div class="age">' + (x.landlord_access ? (x.landlord_user ? '센터 연결' : '가입 전') : '열람 꺼짐') + '</div>' : '') + '</td><td class="nw">' + pstage(x.stage) + '</td>' +
+              '<td class="ellipsis" title="' + esc(x.member_names || '') + '">' + esc(x.member_names || '-') + '</td><td class="nw pcell">' + bar(x.tasks_done, x.tasks_total) + '</td><td class="nw">' + flags(x) + '</td><td class="nw"><span class="age">' + ago(x.updated_at || x.created_at) + '</span></td></tr>';
+          }).join('') : '<tr class="empty-row"><td colspan="8">조건에 맞는 프로젝트가 없습니다.</td></tr>') + '</tbody></table></div>';
+        $$('#pj-list tr[data-id]').forEach(function (tr) { tr.onclick = function () { location.hash = '#/project/' + tr.dataset.id; }; });
+      }
+      $('#pj-g').onclick = function (e) { var b = e.target.closest('button'); if (b) { grp = b.dataset.g; history.replaceState(null, '', '#/projects?g=' + grp); draw(); } };
+      $('#pj-v').onclick = function (e) { var b = e.target.closest('button'); if (b) { VIEW_MODE = b.dataset.v; draw(); } };
+      $('#pj-k').onchange = function (e) { kind = e.target.value; draw(); };
+      $('#pj-p').onchange = function (e) { partner = e.target.value; draw(); };
+      $('#pj-q').oninput = debounce(function (e) { q = e.target.value.trim(); draw(); }, 200);
+      draw();
+    });
+  }
+
+  function projectNew() {
+    setTitle('새 프로젝트');
+    var p = qs();
+    get('/api/admin/landlords').then(function (LL) {
+      var lls = LL.ok ? LL.items : [];
+      view.innerHTML = '<a class="back" href="#/projects">← 프로젝트 목록</a><div class="v-head"><div><h1>새 프로젝트</h1><p>건물 하나, 또는 임대인의 의뢰 하나를 프로젝트로 만듭니다. 만든 뒤 파트너를 참여시키고 권한을 정합니다.</p></div></div>' +
+        '<form class="form-v" id="np"><div class="grid2"><div>' +
+          '<div class="card"><h2>건물·의뢰</h2><div class="field"><label>프로젝트 이름 <span class="muted-s">(예: 부평동 182-76 1층 공실 해결)</span></label><input type="text" name="title" maxlength="120" required></div>' +
+            '<div class="field"><label>건물 주소</label><input type="text" name="address" maxlength="200"></div>' +
+            '<div class="pj-fgrid"><div class="field"><label>건물명</label><input type="text" name="building_name"></div><div class="field"><label>규모 <span class="muted-s">(예: 지하1층·지상5층)</span></label><input type="text" name="scale"></div></div>' +
+            '<div class="field"><label>의뢰 유형 <span class="muted-s">(여러 개 고를 수 있습니다)</span></label><div class="pj-checks" id="np-kinds">' + Object.keys(PKIND).map(function (k) { return '<label><input type="checkbox" name="kinds" value="' + k + '"> ' + PKIND[k] + '</label>'; }).join('') + '</div></div>' +
+            '<div class="field"><label>공실·현재 상황</label><textarea name="vacancy" rows="3" style="min-height:80px"></textarea></div>' +
+            '<div class="field"><label>요청 사항</label><textarea name="request" rows="4" style="min-height:100px"></textarea></div>' +
+            '<div class="field"><label>목표·성공 기준</label><input type="text" name="goal" placeholder="예: 6개월 안에 1·2층 임차 완료, 매각가 45억 이상"></div>' +
+            '<div class="field"><label>가격·재무 <span class="muted-s">(가격·재무 권한이 있는 파트너와 임대인만 봅니다)</span></label><textarea name="finance" rows="2" style="min-height:60px" placeholder="매각 희망가, 대출, 현재 임대 수입 등"></textarea></div>' +
+          '</div>' +
+        '</div><div>' +
+          '<div class="card"><h2>임대인</h2><div class="radio-cards">' +
+            '<label><input type="radio" name="lmode" value="new" checked><div><b>새 임대인 등록</b><span>이메일을 넣으면 임대인센터 안내를 보낼 수 있습니다</span>' +
+              '<div class="pj-fgrid" style="margin-top:8px"><input type="text" name="l_name" placeholder="이름 또는 법인명"><select name="l_kind"><option value="person">개인</option><option value="corp">법인</option></select><input type="text" name="l_phone" placeholder="연락처"><input type="email" name="l_email" placeholder="이메일"></div></div></label>' +
+            '<label><input type="radio" name="lmode" value="pick"' + (lls.length ? '' : ' disabled') + '><div><b>등록된 임대인 선택</b><span>' + (lls.length ? lls.length + '명 등록됨' : '등록된 임대인이 없습니다') + '</span><select name="landlord_id"><option value="">선택</option>' + lls.map(function (l) { return '<option value="' + l.id + '">' + esc(l.name + (l.company ? ' · ' + l.company : '') + (l.email ? ' (' + l.email + ')' : '')) + '</option>'; }).join('') + '</select></div></label>' +
+            '<label><input type="radio" name="lmode" value="none"><div><b>나중에 연결</b><span>매입 의뢰처럼 아직 건물주가 정해지지 않은 경우</span></div></label>' +
+          '</div></div>' +
+          '<div class="card"><h2>시작 설정</h2><div class="pj-fgrid"><div class="field"><label>시작 단계</label><select name="stage">' + G.PSTAGES.slice(0, 6).map(function (s) { return '<option value="' + s[0] + '">' + s[1] + '</option>'; }).join('') + '</select></div>' +
+            '<div class="field"><label>중요도</label><select name="priority"><option value="normal">보통</option><option value="high">중요</option><option value="low">낮음</option></select></div>' +
+            '<div class="field"><label>시작일</label><input type="date" name="start_date" value="' + G.today() + '"></div><div class="field"><label>목표일</label><input type="date" name="due_date"></div></div>' +
+            '<label class="pj-switch"><input type="checkbox" name="template" checked><span>유형별 기본 추진사항과 임대인 요청 자료 넣기</span></label>' +
+            '<label class="pj-switch" style="margin-top:0"><input type="checkbox" name="landlord_access" checked><span>임대인이 임대인센터에서 볼 수 있게 하기</span></label>' +
+            '<div class="field"><label>내부 메모 <span class="muted-s">(관리자만)</span></label><textarea name="internal_memo" rows="2" style="min-height:60px"></textarea></div>' +
+            '<button class="btn btn-primary btn-lg btn-block">프로젝트 만들기</button><p class="muted-s" id="np-from" style="margin-top:10px"></p></div>' +
+        '</div></div></form>';
+      var f = $('#np'), E = f.elements;
+      if (p.inquiry) get('/api/admin/inquiry?id=' + p.inquiry).then(function (j) {
+        if (!j.ok) return; var r = j.item;
+        E.l_name.value = r.name || ''; E.l_phone.value = r.phone || ''; E.l_email.value = r.email || '';
+        var ex = lls.filter(function (l) { return l.email && r.email && l.email.toLowerCase() === r.email.toLowerCase(); })[0];
+        if (ex) { E.lmode.value = 'pick'; E.landlord_id.value = ex.id; }
+        E.address.value = r.address || ''; E.vacancy.value = [r.floor_area, r.status].filter(Boolean).join(' · '); E.request.value = r.message || ''; E.finance.value = r.conditions || '';
+        var map = { develop: ['vacancy', 'develop'], valueup: ['exit', 'valueup'], tenant: ['leasing'], partner: ['etc'] };
+        (map[r.type] || []).forEach(function (k) { var c = $('#np-kinds input[value="' + k + '"]'); if (c) c.checked = true; });
+        E.title.value = (r.address || '').split(' ').slice(0, 4).join(' ') + ' ' + (TYPE[r.type] || '');
+        $('#np-from').innerHTML = '문의 <a href="#/inquiry/' + r.id + '">#' + r.id + '</a>의 내용으로 채웠습니다. 만들면 문의 처리 이력에 기록됩니다.';
+      });
+      f.onsubmit = function (e) {
+        e.preventDefault();
+        var b = { title: E.title.value, address: E.address.value, building_name: E.building_name.value, scale: E.scale.value, vacancy: E.vacancy.value, request: E.request.value, goal: E.goal.value, finance: E.finance.value,
+          kinds: $$('#np-kinds input:checked').map(function (c) { return c.value; }), stage: E.stage.value, priority: E.priority.value, start_date: E.start_date.value, due_date: E.due_date.value,
+          template: E.template.checked, landlord_access: E.landlord_access.checked, internal_memo: E.internal_memo.value, inquiry_id: p.inquiry || null };
+        if (E.lmode.value === 'new' && E.l_name.value.trim()) b.landlord = { name: E.l_name.value, kind: E.l_kind.value, phone: E.l_phone.value, email: E.l_email.value };
+        if (E.lmode.value === 'pick') { if (!E.landlord_id.value) { toast('임대인을 선택해 주세요.', true); return; } b.landlord_id = +E.landlord_id.value; }
+        var btn = $('button.btn-primary', f); btn.disabled = true;
+        post('/api/center/projects', b).then(function (j) {
+          btn.disabled = false;
+          if (j.ok) { toast(j.code + ' 프로젝트를 만들었습니다. 이제 파트너를 참여시켜 주세요.'); location.hash = '#/project/' + j.id + '?tab=people'; } else toast(errText(j), true);
+        });
+      };
+    });
+  }
+
+  function projectDetail(id) {
+    setTitle('프로젝트');
+    var p = qs();
+    view.innerHTML = '<div id="pj-root"></div>';
+    G.mount($('#pj-root'), +id, { base: '#/project/', back: ['#/projects', '프로젝트 목록'], as: p.as || null, tab: p.tab, toast: toast,
+      onLoad: function (D) { setTitle((D.project.code ? D.project.code + ' ' : '') + D.project.title); refreshBadge(); } });
+  }
+
+  /* ---------- 임대인 ---------- */
+  function landlordForm(l) {
+    l = l || {};
+    return '<div class="pj-fgrid"><div class="field"><label>이름·법인명</label><input type="text" name="name" value="' + esc(l.name || '') + '" required></div><div class="field"><label>구분</label><select name="kind"><option value="person">개인</option><option value="corp"' + (l.kind === 'corp' ? ' selected' : '') + '>법인</option></select></div>' +
+      '<div class="field"><label>담당자·법인 정보</label><input type="text" name="company" value="' + esc(l.company || '') + '" placeholder="법인명, 담당자 직함 등"></div><div class="field"><label>연락처</label><input type="text" name="phone" value="' + esc(l.phone || '') + '"></div>' +
+      '<div class="field full"><label>이메일 <span class="muted-s">(이 주소로 가입·인증하면 임대인센터에 자동 연결)</span></label><input type="email" name="email" value="' + esc(l.email || '') + '"></div>' +
+      '<div class="field full"><label>메모 <span class="muted-s">(관리자만)</span></label><textarea name="memo" rows="2" style="min-height:60px">' + esc(l.memo || '') + '</textarea></div></div>' +
+      '<label class="pj-switch"><input type="checkbox" name="portal"' + (l.portal === 0 ? '' : ' checked') + '><span>임대인센터 접속 허용</span></label>';
+  }
+  function landlordBody(E) { return { name: E.name.value, kind: E.kind.value, company: E.company.value, phone: E.phone.value, email: E.email.value, memo: E.memo.value, portal: E.portal.checked }; }
+  function landlords() {
+    setTitle('임대인');
+    get('/api/admin/landlords').then(function (j) {
+      view.innerHTML = '<div class="v-head"><div><h1>임대인</h1><p>프로젝트를 의뢰한 임대인·건물주입니다. 이메일이 같은 회원이 인증을 마치면 임대인센터에 자동으로 연결됩니다.</p></div><div class="acts"><button type="button" class="btn btn-primary btn-sm" id="ll-new">새 임대인</button></div></div>' +
+        '<form class="card form-v" id="ll-form" hidden style="margin-bottom:14px"><h2>새 임대인</h2>' + landlordForm() + '<button class="btn btn-ink btn-sm">등록</button></form>' +
+        '<div class="fbar"><input type="search" id="ll-q" placeholder="이름·연락처·이메일·프로젝트 검색"></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>이름</th><th>구분</th><th>연락처</th><th>이메일</th><th>임대인센터</th><th class="num">프로젝트</th><th>등록일</th></tr></thead><tbody id="ll-body"></tbody></table></div>';
+      var items = j.ok ? j.items : [];
+      function draw(q) {
+        var rows = items.filter(function (l) { return !q || [l.name, l.company, l.phone, l.email, l.project_titles].join(' ').toLowerCase().indexOf(q) > -1; });
+        $('#ll-body').innerHTML = rows.length ? rows.map(function (l) {
+          return '<tr data-id="' + l.id + '"><td><b>' + esc(l.name) + '</b>' + (l.company ? '<div class="age">' + esc(l.company) + '</div>' : '') + '</td><td class="nw">' + (l.kind === 'corp' ? '법인' : '개인') + '</td><td class="nw">' + esc(l.phone || '') + '</td><td>' + esc(l.email || '-') + '</td>' +
+            '<td class="nw">' + (!l.portal ? '<span class="st">접속 막음</span>' : l.user_id ? '<span class="st st-contract">연결됨</span>' : '<span class="age">가입 전</span>') + '</td><td class="num">' + l.projects + (l.active_projects ? ' <span class="age">(진행 ' + l.active_projects + ')</span>' : '') + '</td><td class="nw">' + day(l.created_at) + '</td></tr>';
+        }).join('') : '<tr class="empty-row"><td colspan="7">' + (items.length ? '검색 결과가 없습니다.' : '등록된 임대인이 없습니다. 프로젝트를 만들 때 함께 등록할 수도 있습니다.') + '</td></tr>';
+        $$('#ll-body tr[data-id]').forEach(function (tr) { tr.onclick = function () { location.hash = '#/landlord/' + tr.dataset.id; }; });
+      }
+      draw('');
+      $('#ll-q').oninput = debounce(function (e) { draw(e.target.value.trim().toLowerCase()); }, 200);
+      $('#ll-new').onclick = function () { var f = $('#ll-form'); f.hidden = !f.hidden; };
+      $('#ll-form').onsubmit = function (e) { e.preventDefault(); var b = landlordBody(e.target.elements); b.action = 'create'; post('/api/admin/landlords', b).then(function (k) { if (k.ok) { toast('등록했습니다.' + (k.linked ? ' 같은 이메일의 회원과 연결했습니다.' : '')); location.hash = '#/landlord/' + k.id; } else toast(errText(k), true); }); };
+    });
+  }
+  function landlordDetail(id) {
+    setTitle('임대인');
+    get('/api/admin/landlords?id=' + id).then(function (j) {
+      if (!j.ok) { view.innerHTML = '<a class="back" href="#/landlords">← 임대인</a><p class="muted-s">' + errText(j) + '</p>'; return; }
+      var l = j.item;
+      view.innerHTML = '<a class="back" href="#/landlords">← 임대인</a><div class="v-head"><div><h1>' + esc(l.name) + '</h1><p>' + (l.user_id ? '임대인센터 연결됨 (회원 ' + esc(l.user_name || '') + ')' : '아직 임대인센터에 연결되지 않았습니다') + (l.invited_at ? ' · 안내 메일 ' + day(l.invited_at) : '') + '</p></div>' +
+        '<div class="acts">' + (l.email ? '<button type="button" class="btn btn-outline btn-sm" id="l-inv">임대인센터 안내 메일</button>' : '') + '<a class="btn btn-primary btn-sm" href="#/project/new">새 프로젝트</a></div></div>' +
+        '<div class="grid2"><div><form class="card form-v" id="l-form"><h2>임대인 정보</h2>' + landlordForm(l) + '<button class="btn btn-ink btn-sm">저장</button></form>' +
+          '<div class="card"><h2>회원 계정 연결</h2><p class="muted-s" style="margin-bottom:10px">보통은 같은 이메일로 가입·인증하면 자동으로 연결됩니다. 다른 이메일로 가입한 경우에만 직접 연결하세요.</p><form class="inline-form" id="l-link"><input type="email" name="email" placeholder="회원 이메일"><button class="btn btn-outline btn-sm">연결</button>' + (l.user_id ? '<button type="button" class="btn btn-outline btn-sm" id="l-unlink">연결 해제</button>' : '') + '</form></div></div>' +
+        '<div><div class="card"><h2>프로젝트</h2><ul class="mini-list">' + (j.projects.map(function (x) { return '<li><a href="#/project/' + x.id + '">' + esc(x.code || '') + ' ' + esc(x.title) + '</a><span>' + pstage(x.stage) + (x.landlord_access ? '' : ' <span class="age">열람 꺼짐</span>') + '</span></li>'; }).join('') || '<li class="muted-s">프로젝트가 없습니다.</li>') + '</ul></div>' +
+          '<div class="card"><h2>홈페이지 문의</h2><ul class="mini-list">' + (j.inquiries.map(function (o) { return '<li><a href="#/inquiry/' + o.id + '">#' + o.id + ' ' + esc(TYPE[o.type] || o.type) + ' · ' + esc(o.address) + '</a><span>' + stage(o.stage) + '</span></li>'; }).join('') || '<li class="muted-s">같은 이메일·연락처의 문의가 없습니다.</li>') + '</ul></div>' +
+          '<div class="card"><h2>삭제</h2><p class="muted-s" style="margin-bottom:10px">연결된 프로젝트가 없을 때만 삭제할 수 있습니다.</p><button type="button" class="btn btn-outline btn-sm" id="l-del">임대인 삭제</button></div></div></div>';
+      $('#l-form').onsubmit = function (e) { e.preventDefault(); var b = landlordBody(e.target.elements); b.action = 'update'; b.id = l.id; post('/api/admin/landlords', b).then(function (k) { if (k.ok) { toast('저장했습니다.'); landlordDetail(id); } else toast(errText(k), true); }); };
+      var inv = $('#l-inv'); if (inv) inv.onclick = function () { if (confirm(l.email + ' 로 임대인센터 안내 메일을 보낼까요?')) post('/api/admin/landlords', { action: 'invite', id: l.id }).then(function (k) { toast(k.ok ? '보냈습니다.' : errText(k), !k.ok); if (k.ok) landlordDetail(id); }); };
+      $('#l-link').onsubmit = function (e) { e.preventDefault(); linkUser(e.target.email.value, '/api/admin/landlords', l.id, function () { landlordDetail(id); }); };
+      var ul = $('#l-unlink'); if (ul) ul.onclick = function () { if (confirm('회원 연결을 해제할까요? 이 임대인은 임대인센터에 들어올 수 없게 됩니다. (같은 이메일로 인증한 회원은 다시 자동 연결됩니다)')) post('/api/admin/landlords', { action: 'link', id: l.id, user_id: null }).then(function () { landlordDetail(id); }); };
+      $('#l-del').onclick = function () { if (confirm(l.name + ' 임대인을 삭제할까요?')) post('/api/admin/landlords', { action: 'delete', id: l.id }).then(function (k) { if (k.ok) { toast('삭제했습니다.'); location.hash = '#/landlords'; } else toast(errText(k), true); }); };
+    });
+  }
+  function linkUser(email, api, id, done) {
+    email = String(email || '').trim().toLowerCase(); if (!email) return;
+    get('/api/admin/users?q=' + encodeURIComponent(email)).then(function (j) {
+      var u = j.ok ? j.items.filter(function (x) { return x.email.toLowerCase() === email; })[0] : null;
+      if (!u) { toast('그 이메일로 가입한 회원이 없습니다.', true); return; }
+      if (!confirm(u.name + ' (' + u.email + ') 회원과 연결할까요?')) return;
+      post(api, { action: 'link', id: id, user_id: u.id }).then(function (k) { toast(k.ok ? '연결했습니다.' : errText(k), !k.ok); if (k.ok) done(); });
+    });
+  }
+
+  /* ---------- 파트너 ---------- */
+  function partnerForm(x) {
+    x = x || {};
+    return '<div class="pj-fgrid"><div class="field"><label>담당자 이름</label><input type="text" name="name" value="' + esc(x.name || '') + '" required></div><div class="field"><label>소속 회사</label><input type="text" name="company" value="' + esc(x.company || '') + '" placeholder="중개법인, 자산운용사 등"></div>' +
+      '<div class="field"><label>직함</label><input type="text" name="title" value="' + esc(x.title || '') + '"></div><div class="field"><label>분야</label><select name="field">' + Object.keys(PROLE).map(function (k) { return '<option value="' + k + '"' + (x.field === k ? ' selected' : '') + '>' + PROLE[k] + '</option>'; }).join('') + '</select></div>' +
+      '<div class="field"><label>연락처</label><input type="text" name="phone" value="' + esc(x.phone || '') + '"></div><div class="field"><label>이메일 <span class="muted-s">(로그인·알림용)</span></label><input type="email" name="email" value="' + esc(x.email || '') + '" required></div>' +
+      '<div class="field"><label>제휴 계약</label><select name="agreement"><option value="none">없음</option><option value="nda"' + (x.agreement === 'nda' ? ' selected' : '') + '>비밀유지 약정</option><option value="signed"' + (x.agreement === 'signed' ? ' selected' : '') + '>제휴 계약 체결</option></select></div>' +
+      '<div class="field"><label>상태</label><select name="status"><option value="active">이용 중</option><option value="paused"' + (x.status === 'paused' ? ' selected' : '') + '>이용 중지 (모든 프로젝트 접근 차단)</option></select></div></div>' +
+      '<h4 style="margin:6px 0 8px;font-size:var(--fs-sm)">기본 정산 조건 <span class="muted-s" style="font-weight:400">프로젝트에 참여시킬 때 기본값으로 들어갑니다</span></h4>' +
+      '<datalist id="fee-bases2"><option value="중개보수"><option value="거래금액"><option value="공백 수입"><option value="월 임대료"><option value="고정 금액"></datalist>' +
+      '<div class="pj-fgrid"><div class="field"><label>수수료율(%)</label><input type="text" name="fee_rate" inputmode="decimal" value="' + (x.fee_rate == null ? '' : x.fee_rate) + '"></div><div class="field"><label>수수료 기준</label><input type="text" name="fee_base" list="fee-bases2" value="' + esc(x.fee_base || '') + '"></div>' +
+      '<div class="field"><label>성과보수</label><input type="text" name="success_fee" value="' + esc(x.success_fee || '') + '" placeholder="예: 계약 성사 시 월세 1개월"></div><div class="field"><label>컨설팅비(원)</label><input type="text" name="consulting_fee" inputmode="numeric" value="' + (x.consulting_fee == null ? '' : x.consulting_fee) + '"></div>' +
+      '<div class="field full"><label>조건 메모</label><input type="text" name="fee_note" value="' + esc(x.fee_note || '') + '" placeholder="지급 시점, 부가세 별도 등"></div>' +
+      '<div class="field full"><label>메모 <span class="muted-s">(관리자만)</span></label><textarea name="memo" rows="2" style="min-height:60px">' + esc(x.memo || '') + '</textarea></div></div>';
+  }
+  function partnerBody(E) { var b = {}; ['name', 'company', 'title', 'field', 'phone', 'email', 'agreement', 'status', 'fee_rate', 'fee_base', 'success_fee', 'consulting_fee', 'fee_note', 'memo'].forEach(function (k) { b[k] = E[k].value; }); return b; }
+  function feeText(x) { var t = []; if (x.fee_rate != null) t.push(x.fee_rate + '%' + (x.fee_base ? '(' + x.fee_base + ')' : '')); if (x.success_fee) t.push('성과 ' + x.success_fee); if (x.consulting_fee) t.push('컨설팅 ' + G.won(x.consulting_fee)); return t.join(' · '); }
+  var AGREE = { none: '-', nda: '비밀유지', signed: '제휴 계약' };
+  function partners() {
+    setTitle('파트너');
+    get('/api/admin/partners').then(function (j) {
+      var items = j.ok ? j.items : [], fld = '', st = 'active', q = '';
+      view.innerHTML = '<div class="v-head"><div><h1>파트너</h1><p>중개사·중개법인, 자산운용사, 명도·투자유치·리테일 담당 등 함께 일하는 협력 담당자입니다. 등록한 이메일로 가입·인증하면 임대인센터에 연결됩니다.</p></div><div class="acts"><button type="button" class="btn btn-primary btn-sm" id="pt-new">새 파트너</button></div></div>' +
+        '<form class="card form-v" id="pt-form" hidden style="margin-bottom:14px"><h2>새 파트너</h2>' + partnerForm() + '<label class="pj-switch"><input type="checkbox" name="invite" checked><span>등록 후 임대인센터 안내 메일 보내기</span></label><button class="btn btn-ink btn-sm">등록</button></form>' +
+        '<div class="pills" id="pt-st"></div><div class="fbar"><select id="pt-f"><option value="">분야 전체</option>' + Object.keys(PROLE).map(function (k) { return '<option value="' + k + '">' + PROLE[k] + '</option>'; }).join('') + '</select><input type="search" id="pt-q" placeholder="이름·회사·연락처·이메일 검색"></div>' +
+        '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>담당자</th><th>분야</th><th>연락처</th><th>임대인센터</th><th>제휴</th><th>기본 조건</th><th class="num">진행 중</th><th class="num">지급 예정</th><th class="num">지급 완료</th></tr></thead><tbody id="pt-body"></tbody></table></div>';
+      function draw() {
+        $('#pt-st').innerHTML = [['active', '이용 중'], ['paused', '이용 중지'], ['all', '전체']].map(function (s) { return '<button type="button" data-s="' + s[0] + '" aria-pressed="' + (s[0] === st) + '">' + s[1] + '<span class="c">' + items.filter(function (x) { return s[0] === 'all' || x.status === s[0]; }).length + '</span></button>'; }).join('');
+        var rows = items.filter(function (x) { return (st === 'all' || x.status === st) && (!fld || x.field === fld) && (!q || [x.name, x.company, x.phone, x.email].join(' ').toLowerCase().indexOf(q) > -1); });
+        $('#pt-body').innerHTML = rows.length ? rows.map(function (x) {
+          return '<tr data-id="' + x.id + '"><td><b>' + esc(x.name) + '</b>' + (x.title ? ' <span class="age">' + esc(x.title) + '</span>' : '') + '<div class="age">' + esc(x.company || '') + '</div></td><td class="nw">' + esc(PROLE[x.field] || '') + '</td><td class="nw">' + esc(x.phone || '') + '<div class="age">' + esc(x.email) + '</div></td>' +
+            '<td class="nw">' + (x.status === 'paused' ? '<span class="st">이용 중지</span>' : x.user_id ? '<span class="st st-contract">연결됨</span>' : '<span class="age">가입 전</span>') + '</td><td class="nw">' + AGREE[x.agreement || 'none'] + '</td><td class="ellipsis">' + esc(feeText(x) || '-') + '</td>' +
+            '<td class="num">' + x.active_projects + '</td><td class="num">' + (x.unpaid ? G.won(x.unpaid) : '-') + '</td><td class="num">' + (x.paid ? G.won(x.paid) : '-') + '</td></tr>';
+        }).join('') : '<tr class="empty-row"><td colspan="9">' + (items.length ? '조건에 맞는 파트너가 없습니다.' : '등록된 파트너가 없습니다. 함께 일하는 담당자를 먼저 등록하세요.') + '</td></tr>';
+        $$('#pt-body tr[data-id]').forEach(function (tr) { tr.onclick = function () { location.hash = '#/partner/' + tr.dataset.id; }; });
+      }
+      draw();
+      $('#pt-st').onclick = function (e) { var b = e.target.closest('button'); if (b) { st = b.dataset.s; draw(); } };
+      $('#pt-f').onchange = function (e) { fld = e.target.value; draw(); };
+      $('#pt-q').oninput = debounce(function (e) { q = e.target.value.trim().toLowerCase(); draw(); }, 200);
+      $('#pt-new').onclick = function () { var f = $('#pt-form'); f.hidden = !f.hidden; };
+      $('#pt-form').onsubmit = function (e) {
+        e.preventDefault(); var E = e.target.elements, b = partnerBody(E); b.action = 'create';
+        post('/api/admin/partners', b).then(function (k) {
+          if (!k.ok) { toast(errText(k), true); return; }
+          var done = function (msg) { toast(msg); location.hash = '#/partner/' + k.id; };
+          if (E.invite.checked && MAIL) post('/api/admin/partners', { action: 'invite', id: k.id }).then(function (m) { done('등록했습니다.' + (m.ok ? ' 안내 메일을 보냈습니다.' : ' 안내 메일은 보내지 못했습니다.')); });
+          else done('등록했습니다.' + (k.linked ? ' 같은 이메일의 회원과 연결했습니다.' : ''));
+        });
+      };
+    });
+  }
+  function partnerDetail(id) {
+    setTitle('파트너');
+    get('/api/admin/partners?id=' + id).then(function (j) {
+      if (!j.ok) { view.innerHTML = '<a class="back" href="#/partners">← 파트너</a><p class="muted-s">' + errText(j) + '</p>'; return; }
+      var x = j.item, MS = { plan: '예정', due: '청구·확정', done: '완료', cancel: '취소' };
+      view.innerHTML = '<a class="back" href="#/partners">← 파트너</a><div class="v-head"><div><h1>' + esc(x.name) + (x.company ? ' <span class="muted-s">' + esc(x.company) + '</span>' : '') + '</h1><p>' + esc(PROLE[x.field] || '') + ' · ' +
+        (x.status === 'paused' ? '이용 중지' : x.user_id ? '임대인센터 연결됨' : '아직 가입·인증 전') + (x.invited_at ? ' · 안내 메일 ' + day(x.invited_at) : '') + '</p></div><div class="acts"><button type="button" class="btn btn-outline btn-sm" id="p-inv">임대인센터 안내 메일</button></div></div>' +
+        '<div class="grid2"><div><form class="card form-v" id="p-form"><h2>파트너 정보</h2>' + partnerForm(x) + '<button class="btn btn-ink btn-sm">저장</button></form>' +
+          '<div class="card"><h2>회원 계정 연결</h2><p class="muted-s" style="margin-bottom:10px">같은 이메일로 가입·인증하면 자동으로 연결됩니다. 다른 이메일로 가입한 경우에만 직접 연결하세요.</p><form class="inline-form" id="p-link"><input type="email" name="email" placeholder="회원 이메일"><button class="btn btn-outline btn-sm">연결</button>' + (x.user_id ? '<button type="button" class="btn btn-outline btn-sm" id="p-unlink">연결 해제</button>' : '') + '</form></div></div>' +
+        '<div><div class="card"><h2>참여 프로젝트 <small>' + j.projects.length + '건</small></h2>' + (j.projects.length ? '<ul class="mini-list">' + j.projects.map(function (m) {
+            return '<li><span><a href="#/project/' + m.id + '?tab=people">' + esc(m.code || '') + ' ' + esc(m.title) + '</a><br><span class="age">' + esc(PROLE[m.role] || '') + ' · 임대인에게 “' + esc(m.alias || '') + '” · ' + esc(feeText(m) || '조건 미설정') + (m.status !== 'active' ? ' · 참여 종료' : '') + '</span></span><span>' + pstage(m.stage) + '</span></li>';
+          }).join('') + '</ul>' : '<p class="muted-s">참여한 프로젝트가 없습니다. 프로젝트의 참여자·권한 탭에서 추가하세요.</p>') + '</div>' +
+          '<div class="card"><h2>지급 내역</h2>' + (j.money.length ? '<ul class="mini-list">' + j.money.map(function (m) { return '<li><span>' + esc(m.code || '') + ' ' + esc(m.label) + ' · <b>' + G.won(m.amount) + '</b></span><span class="age">' + MS[m.status] + (m.done_date ? ' ' + esc(m.done_date) : m.due_date ? ' · 예정 ' + esc(m.due_date) : '') + '</span></li>'; }).join('') + '</ul>' : '<p class="muted-s">등록된 지급 내역이 없습니다.</p>') + '</div>' +
+          '<div class="card"><h2>삭제</h2><p class="muted-s" style="margin-bottom:10px">참여 기록이 없을 때만 삭제할 수 있습니다. 관계를 정리할 때는 상태를 ‘이용 중지’로 바꾸면 모든 프로젝트 접근이 바로 막힙니다.</p><button type="button" class="btn btn-outline btn-sm" id="p-del">파트너 삭제</button></div></div></div>';
+      $('#p-form').onsubmit = function (e) { e.preventDefault(); var b = partnerBody(e.target.elements); b.action = 'update'; b.id = x.id; post('/api/admin/partners', b).then(function (k) { if (k.ok) { toast('저장했습니다.'); partnerDetail(id); } else toast(errText(k), true); }); };
+      $('#p-inv').onclick = function () { if (confirm(x.email + ' 로 임대인센터 안내 메일을 보낼까요?')) post('/api/admin/partners', { action: 'invite', id: x.id }).then(function (k) { toast(k.ok ? '보냈습니다.' : errText(k), !k.ok); if (k.ok) partnerDetail(id); }); };
+      $('#p-link').onsubmit = function (e) { e.preventDefault(); linkUser(e.target.email.value, '/api/admin/partners', x.id, function () { partnerDetail(id); }); };
+      var ul = $('#p-unlink'); if (ul) ul.onclick = function () { if (confirm('회원 연결을 해제할까요?')) post('/api/admin/partners', { action: 'link', id: x.id, user_id: null }).then(function () { partnerDetail(id); }); };
+      $('#p-del').onclick = function () { if (confirm(x.name + ' 파트너를 삭제할까요?')) post('/api/admin/partners', { action: 'delete', id: x.id }).then(function (k) { if (k.ok) { toast('삭제했습니다.'); location.hash = '#/partners'; } else toast(errText(k), true); }); };
+    });
+  }
+
+  /* ---------- 정산 현황 ---------- */
+  function finance() {
+    setTitle('정산 현황');
+    Promise.all([get('/api/admin/center?view=finance'), get('/api/admin/center')]).then(function (rs) {
+      var j = rs[0], C = rs[1];
+      if (!j.ok) { view.innerHTML = '<p class="muted-s">' + errText(j) + '</p>'; return; }
+      var items = j.items, dir = '', st = 'open', MS = { plan: '예정', due: '청구·확정', done: '완료', cancel: '취소' }, m = C.ok ? C.money : {};
+      var byP = {}; items.filter(function (x) { return x.direction === 'out' && x.status !== 'cancel'; }).forEach(function (x) { var k = x.partner_name || '-'; byP[k] = byP[k] || { name: k, company: x.partner_company, open: 0, done: 0 }; if (x.status === 'done') byP[k].done += x.amount || 0; else byP[k].open += x.amount || 0; });
+      view.innerHTML = '<div class="v-head"><div><h1>정산 현황</h1><p>프로젝트별로 등록한 받을 돈과 파트너 지급을 모아 봅니다. 금액은 입력한 값 그대로이며 세금·비용은 따로 계산해야 합니다.</p></div><div class="acts"><a class="btn btn-outline btn-sm" href="/api/admin/center?view=finance&format=csv">엑셀(CSV) 내려받기</a></div></div>' +
+        '<div class="kpis"><div class="kpi"><div class="l">받을 돈 (예정·청구)</div><div class="v sm">' + G.won(m.in_plan) + '</div><div class="s">청구 ' + G.won(m.in_due) + '</div></div><div class="kpi"><div class="l">받은 돈</div><div class="v sm">' + G.won(m.in_done) + '</div></div>' +
+          '<div class="kpi"><div class="l">줄 돈 (예정·확정)</div><div class="v sm">' + G.won(m.out_plan) + '</div><div class="s">확정 ' + G.won(m.out_due) + '</div></div><div class="kpi"><div class="l">준 돈</div><div class="v sm">' + G.won(m.out_done) + '</div></div></div>' +
+        '<div class="grid2"><div><div class="pills" id="fi-d"></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>구분</th><th>프로젝트</th><th>항목</th><th>파트너</th><th class="num">금액</th><th>상태</th><th>예정일</th><th>완료일</th></tr></thead><tbody id="fi-body"></tbody></table></div></div>' +
+        '<div><div class="card"><h2>파트너별 지급</h2>' + (Object.keys(byP).length ? '<ul class="mini-list">' + Object.keys(byP).map(function (k) { var x = byP[k]; return '<li><span><b>' + esc(x.name) + '</b> <span class="age">' + esc(x.company || '') + '</span></span><span class="age">남은 지급 ' + G.won(x.open) + ' · 지급 완료 ' + G.won(x.done) + '</span></li>'; }).join('') + '</ul>' : '<p class="muted-s">지급 내역이 없습니다.</p>') + '</div>' +
+          '<div class="card"><h2>입력 방법</h2><p class="muted-s">각 프로젝트의 ‘정산’ 탭에서 받을 돈(컨설팅비·성과보수·중개보수)과 줄 돈(파트너 수수료)을 등록합니다. 줄 돈은 파트너의 수수료율을 불러와 기준 금액 × 비율로 계산할 수 있습니다.</p></div></div></div>';
+      function draw() {
+        $('#fi-d').innerHTML = [['', '전체'], ['in', '받을 돈'], ['out', '줄 돈']].map(function (d) { return '<button type="button" data-d="' + d[0] + '" aria-pressed="' + (d[0] === dir) + '">' + d[1] + '</button>'; }).join('') +
+          [['open', '미완료'], ['done', '완료'], ['all', '상태 전체']].map(function (s) { return '<button type="button" data-s="' + s[0] + '" aria-pressed="' + (s[0] === st) + '">' + s[1] + '</button>'; }).join('');
+        var rows = items.filter(function (x) { return (!dir || x.direction === dir) && (st === 'all' || (st === 'done' ? x.status === 'done' : (x.status === 'plan' || x.status === 'due'))); });
+        $('#fi-body').innerHTML = rows.length ? rows.map(function (x) {
+          return '<tr data-id="' + x.project_id + '"><td class="nw">' + (x.direction === 'in' ? '<span class="st st-contract">받을 돈</span>' : '<span class="st st-replied">줄 돈</span>') + '</td><td><span class="pj-code">' + esc(x.code || '') + '</span> ' + esc(x.title) + '</td><td>' + esc(x.label || '') + '</td><td class="nw">' + esc(x.partner_name || '') + '</td>' +
+            '<td class="num nw"><b>' + G.won(x.amount) + '</b></td><td class="nw">' + MS[x.status] + '</td><td class="nw">' + esc(x.due_date || '') + '</td><td class="nw">' + esc(x.done_date || '') + '</td></tr>';
+        }).join('') : '<tr class="empty-row"><td colspan="8">해당하는 정산 항목이 없습니다.</td></tr>';
+        $$('#fi-body tr[data-id]').forEach(function (tr) { tr.onclick = function () { location.hash = '#/project/' + tr.dataset.id + '?tab=money'; }; });
+      }
+      $('#fi-d').onclick = function (e) { var b = e.target.closest('button'); if (!b) return; if (b.dataset.d !== undefined) dir = b.dataset.d; if (b.dataset.s) st = b.dataset.s; draw(); };
+      draw();
+    });
+  }
+
 
   boot();
 })();

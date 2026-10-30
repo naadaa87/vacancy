@@ -483,6 +483,7 @@ PAGES = {
     "account":    {"path": "/account",         "title": "마이페이지 — 공백", "desc": "회원 정보와 문의 내역", "noindex": True},
     "admin":      {"path": "/admin",           "title": "관리자 — 공백", "desc": "문의·회원 관리", "noindex": True},
     "docview":    {"path": "/documents/view",  "title": "받은 자료 — 공백", "desc": "공백에서 보낸 자료", "noindex": True},
+    "center":     {"path": "/center",          "title": "임대인센터 — 공백", "desc": "공백이 초대한 임대인과 협력 파트너가 프로젝트 진행 상황을 함께 보는 곳", "noindex": True},
     "setup":      {"path": "/setup-check",     "title": "설정 점검 — 공백", "desc": "홈페이지 기능 설정 점검", "noindex": True},
     "404":        {"path": "/404",         "title": "페이지를 찾을 수 없습니다 — 공백", "desc": "요청하신 페이지가 없습니다."},
 }

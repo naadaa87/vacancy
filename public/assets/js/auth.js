@@ -67,6 +67,9 @@
   function fail(form, j) { markFields(form, j.fields); status(form, 'err', j.message || ERR[j.error] || ERR.server_error); }
   var next = (function () { try { var n = new URLSearchParams(location.search).get('next'); return n && n.charAt(0) === '/' && n.charAt(1) !== '/' ? n : null; } catch (e) { return null; } })();
 
+  // 초대 메일의 링크(?email=)로 들어오면 이메일을 미리 채웁니다
+  (function () { try { var em = new URLSearchParams(location.search).get('email'); if (!em) return; ['s-email', 'l-email', 'email'].forEach(function (id) { var el = document.getElementById(id); if (el && !el.value) el.value = em; }); document.querySelectorAll('#signup-form input[type=email], #login-form input[type=email]').forEach(function (el) { if (!el.value) el.value = em; }); } catch (e) {} })();
+
   /* 서버 기능이 준비되지 않았으면 폼 대신 안내 표시 */
   var authForms = document.querySelectorAll('[data-auth-form]');
   if (authForms.length) {
@@ -140,6 +143,7 @@
       document.getElementById('acc-sub').textContent = u.email + ' · 가입일 ' + (u.created_at || '').slice(0, 10);
       document.getElementById('acc-acts').hidden = false;
       if (u.is_admin) document.getElementById('acc-admin').hidden = false;
+      if (j.center === 'partner' || j.center === 'landlord') { document.getElementById('acc-center').hidden = false; document.getElementById('acc-center-t').textContent = j.center === 'landlord' ? '의뢰하신 건물의 진행 상황, 요청 자료, 공백의 보고를 확인하세요.' : '함께 진행 중인 프로젝트의 정보, 추진사항, 소통 내용을 확인하세요.'; }
       if (!u.email_verified) document.getElementById('acc-verify').hidden = false;
       acc.hidden = false;
       document.getElementById('p-email').value = u.email;

@@ -94,7 +94,8 @@ def main():
     for pid, tpl, out in [("signup", "signup.html", "signup.html"), ("login", "login.html", "login.html"),
                           ("forgot", "forgot.html", "forgot-password.html"), ("reset", "reset.html", "reset-password.html"),
                           ("account", "account.html", "account.html"), ("admin", "admin.html", "admin.html"),
-                          ("setup", "setup.html", "setup-check.html"), ("docview", "docview.html", "documents/view.html")]:
+                          ("setup", "setup.html", "setup-check.html"), ("docview", "docview.html", "documents/view.html"),
+                          ("center", "center.html", "center.html")]:
         render(pid, tpl, out)
     # 인사이트 개별 글
     for i, a in enumerate(D.INSIGHTS):
@@ -114,7 +115,7 @@ def main():
         sm.append("  <url><loc>%s%s</loc><lastmod>%s</lastmod><priority>%s</priority></url>" % (D.SITE["domain"], u if u != "/" else "/", today, pr))
     sm.append("</urlset>")
     write("sitemap.xml", "\n".join(sm) + "\n")
-    write("robots.txt", "User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /account\nDisallow: /admin\nDisallow: /reset-password\nDisallow: /setup-check\nDisallow: /documents/\n\nSitemap: %s/sitemap.xml\n" % D.SITE["domain"])
+    write("robots.txt", "User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /account\nDisallow: /admin\nDisallow: /reset-password\nDisallow: /setup-check\nDisallow: /documents/\nDisallow: /center\n\nSitemap: %s/sitemap.xml\n" % D.SITE["domain"])
 
     # Cloudflare Pages 설정 파일
     write("_headers", """/*
@@ -134,6 +135,9 @@ def main():
   Cache-Control: no-store
 /admin
   Cache-Control: no-store
+/center
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer
 /reset-password
   Cache-Control: no-store
   Referrer-Policy: no-referrer

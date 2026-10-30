@@ -731,3 +731,11 @@ body.menu-open .mobile-menu { display: block; position: fixed; inset: 72px 0 0 0
 .dv-side .btn-block { margin-top: 4px; }
 .inq-list b a:hover { color: var(--point); }
 @media (max-width: 860px) { .dv-grid { grid-template-columns: 1fr; } }
+
+/* 마이페이지 — 임대인센터 바로가기 */
+.acc-center { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; padding: 18px 22px; margin-bottom: 18px; border: 1px solid var(--ink); border-radius: var(--radius-lg); background: #fff; }
+.acc-center:hover { text-decoration: none; background: var(--paper-2); }
+.acc-center b { font-size: 1.05rem; padding-right: 14px; border-right: 1px solid var(--line-2); }
+.acc-center span { color: var(--ink-2); font-size: var(--fs-sm); }
+.acc-center em { font-style: normal; color: var(--point-dark); font-weight: 700; font-size: var(--fs-sm); white-space: nowrap; }
+@media (max-width: 600px) { .acc-center { grid-template-columns: 1fr; gap: 6px; } .acc-center b { border: 0; padding: 0; } }

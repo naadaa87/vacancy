@@ -144,7 +144,7 @@ body.adm { background: var(--paper-2); font-size: 0.97rem; }
 /* 폼 */
 .form-v .field { margin-bottom: 14px; }
 .form-v textarea { min-height: 180px; }
-.form-v input[type=text], .form-v input[type=url], .form-v input[type=email], .form-v select, .form-v textarea {
+.form-v input[type=text], .form-v input[type=url], .form-v input[type=email], .form-v input[type=date], .form-v input[type=number], .form-v select, .form-v textarea {
   width: 100%; padding: 11px 13px; border: 1px solid var(--line-2); border-radius: var(--radius); background: #fff; font: inherit; color: var(--ink);
 }
 .form-v input[type=file] { font-size: var(--fs-sm); }
@@ -174,3 +174,31 @@ body.adm { background: var(--paper-2); font-size: 0.97rem; }
 /* 토스트 */
 .adm-toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 11px 18px; border-radius: var(--radius); font-size: var(--fs-sm); z-index: 99; box-shadow: 0 6px 24px rgba(0,0,0,.16); }
 .adm-toast.err { background: var(--point-dark); }
+
+/* 메뉴 구분 */
+.adm-nav-h { display: block; padding: 14px 12px 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--ink-3); }
+@media (max-width: 900px) { .adm-nav-h { display: none; } }
+
+/* 임대인센터 목록 */
+.st.ps-intake { background: var(--paper-3); color: var(--ink-2); }
+.st.ps-diagnosis, .st.ps-proposal { background: var(--navy-tint); color: var(--navy); }
+.st.ps-contract, .st.ps-execution { background: #fff1e9; color: var(--point-dark); }
+.st.ps-closing { background: #fbf1dd; color: var(--warn); }
+.st.ps-done { background: #e6f4ec; color: var(--ok); }
+.st.ps-hold, .st.ps-dropped { background: var(--paper-3); color: var(--ink-3); }
+.pbar { display: inline-block; width: 70px; height: 6px; border-radius: 9px; background: var(--paper-3); overflow: hidden; vertical-align: middle; margin-right: 6px; }
+.pbar i { display: block; height: 100%; background: var(--navy); border-radius: 9px; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: var(--radius); overflow: hidden; background: #fff; }
+.seg button { border: 0; background: none; padding: 8px 12px; font: inherit; font-size: var(--fs-sm); cursor: pointer; color: var(--ink-2); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr); gap: 10px; overflow-x: auto; padding-bottom: 8px; }
+.board-col { background: var(--paper-3); border-radius: var(--radius-lg); padding: 10px; min-height: 160px; }
+.board-col h3 { font-size: var(--fs-sm); display: flex; justify-content: space-between; padding: 2px 4px 8px; }
+.board-col h3 span { color: var(--ink-3); font-weight: 500; }
+.board-card { display: grid; gap: 4px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 11px 12px; margin-bottom: 8px; color: inherit; font-size: var(--fs-sm); }
+.board-card:hover { text-decoration: none; border-color: var(--ink); }
+.board-card .pbar { width: 100%; margin: 4px 0 0; }
+.board-card .pj-code { font-size: 11px; }
+.pj-ptbl .pj-ptitle { min-width: 260px; }
+.pj-ptbl .pj-pk { margin: 4px 0 2px; display: flex; gap: 4px; flex-wrap: wrap; }
+.pj-ptbl td.ellipsis { max-width: 200px; }

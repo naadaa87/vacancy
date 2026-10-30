@@ -283,3 +283,22 @@ tr.is-cancel td { color: var(--ink-3); text-decoration: line-through; }
 .ct-side .mini-list a { color: var(--navy); font-weight: 600; }
 .ct-note { margin-top: 28px; font-size: var(--fs-xs); color: var(--ink-3); padding-top: 16px; border-top: 1px solid var(--line); }
 .ct-proj .back { margin-bottom: 14px; }
+
+/* 로그인 전 안내 */
+.ct-landing { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 18px; align-items: start; }
+.ct-landing > .ct-note { grid-column: 1 / -1; margin-top: 6px; }
+.ct-login { padding: clamp(24px, 3vw, 36px); border-color: var(--ink); }
+.ct-login h2 { font-size: clamp(1.3rem, 2.2vw, 1.6rem); margin: 14px 0 10px; letter-spacing: -0.02em; }
+.ct-login > p { color: var(--ink-2); }
+.ct-login .acts { margin-top: 22px; display: flex; gap: 10px; flex-wrap: wrap; }
+.ct-lock { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--point-tint); color: var(--point-dark); }
+.ct-hint { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--ink-3); }
+.ct-who { display: grid; gap: 14px; }
+.ct-who .card { padding: 20px 22px; }
+.ct-who h3 { font-size: 1.1rem; }
+.ct-who .card > p { font-size: var(--fs-sm); color: var(--ink-3); margin-top: 2px; }
+.ct-checks { margin-top: 12px; display: grid; gap: 8px; }
+.ct-checks li { position: relative; padding-left: 18px; font-size: var(--fs-sm); color: var(--ink-2); }
+.ct-checks li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 7px; height: 7px; border-radius: 2px; background: var(--point); }
+.ct-gate .ct-checks { margin: 14px 0 0; }
+@media (max-width: 860px) { .ct-landing { grid-template-columns: 1fr; } }

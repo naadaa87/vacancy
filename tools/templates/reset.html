@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="auth">
+  <div class="wrap auth-grid">
+    <div class="auth-intro">
+      <div class="crumb tiny"><a href="/">홈</a> / 새 비밀번호</div>
+      <h1>새 비밀번호 정하기</h1>
+      <p>새 비밀번호를 저장하면 다른 기기의 로그인은 모두 해제됩니다.</p>
+    </div>
+    <div class="auth-card">
+      <form id="reset-form" class="form" novalidate data-auth-form>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="r-pw">새 비밀번호</label>
+            <input type="password" id="r-pw" name="password" required autocomplete="new-password">
+            <p class="hint">8자 이상, 영문과 숫자를 함께 사용</p>
+            <p class="err">8자 이상, 영문과 숫자를 함께 사용해 주세요.</p>
+          </div>
+          <div class="field full">
+            <label for="r-pw2">새 비밀번호 확인</label>
+            <input type="password" id="r-pw2" name="password2" required autocomplete="new-password" data-match="r-pw">
+            <p class="err">비밀번호가 서로 다릅니다.</p>
+          </div>
+        </div>
+        <div class="form-status" role="status" aria-live="polite"></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">새 비밀번호 저장</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/assets/js/auth.js?v={{ build_id }}" defer></script>{% endblock %}

@@ -6,7 +6,7 @@
 <title>{{ page.title }}</title>
 <meta name="description" content="{{ page.desc }}">
 <link rel="canonical" href="{{ site.domain }}{{ page.path if page.path != '/' else '/' }}">
-{% if page_id == '404' %}<meta name="robots" content="noindex">{% endif %}
+{% if page_id == '404' or page.noindex %}<meta name="robots" content="noindex, nofollow">{% endif %}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="공백 — 주식회사 블랭크">
 <meta property="og:title" content="{{ page.title }}">
@@ -54,7 +54,7 @@
       </ul>
     </nav>
     <div class="header-actions">
-      <a class="link-quiet" href="/assessment">사전진단</a>
+      <a class="link-quiet" href="/login" data-auth-link>로그인</a>
       <a class="btn btn-primary btn-sm" href="/contact">공간 검토 요청</a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="메뉴 열기">
         <span></span><span></span><span></span>
@@ -68,6 +68,7 @@
       {% endfor %}
       <li><a href="/assessment">공간 사전진단</a></li>
       <li><a href="/contact">문의하기</a></li>
+      <li><a href="/login" data-auth-link>로그인</a></li>
     </ul>
     <div class="mobile-menu-foot">
       <a href="tel:{{ site.phone|replace('-','') }}">{{ site.phone }}</a>
@@ -126,7 +127,7 @@
   </div>
 </footer>
 
-{% if page_id not in ['contact'] %}
+{% if page_id not in ['contact', 'center'] %}
 <div class="sticky-cta" aria-hidden="false">
   <a class="btn btn-primary" href="/contact">공간 검토 요청하기</a>
 </div>

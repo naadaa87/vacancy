@@ -20,6 +20,17 @@
     }
   } catch (e) {}
 
+  // 회원이면 이름·연락처·이메일·구분 자동 입력
+  if (/(?:^|;\s*)gb_li=1/.test(document.cookie)) {
+    fetch('/api/auth/me', { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !j.user) return;
+      var u = j.user, map = { 'f-name': u.company ? u.name + ' · ' + u.company : u.name, 'f-phone': u.phone, 'f-email': u.email, 'f-role': u.role };
+      Object.keys(map).forEach(function (id) { var el = document.getElementById(id); if (el && !el.value && map[id]) el.value = map[id]; });
+      var note = document.getElementById('member-note');
+      if (note) { note.hidden = false; note.innerHTML = '<b>' + u.name + '</b>님 회원 정보로 채웠습니다. 접수한 문의는 <a href="/account">마이페이지</a>에서 확인할 수 있습니다.'; }
+    }).catch(function () {});
+  }
+
   function setInvalid(el, bad) {
     var f = el.closest('.field');
     if (f) f.classList.toggle('is-invalid', bad);

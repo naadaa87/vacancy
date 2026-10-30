@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="/assets/css/admin.css?v={{ build_id }}">
+<link rel="stylesheet" href="/assets/css/center.css?v={{ build_id }}">
+{% endblock %}
+{% block main %}
+<section class="page-head ct-head">
+  <div class="wrap">
+    <div class="crumb"><a href="/">홈</a><span>/</span><span>임대인센터</span></div>
+    <h1>임대인센터</h1>
+    <p id="ct-sub">공백이 초대한 임대인과 협력 파트너가 건물별 프로젝트의 진행 상황을 함께 확인하는 곳입니다.</p>
+  </div>
+</section>
+<section class="ct-shell">
+  <div class="wrap" id="ct-app"><p class="muted">불러오는 중…</p></div>
+</section>
+<div class="adm-toast" id="toast" role="status" aria-live="polite" hidden></div>
+{% endblock %}
+{% block scripts %}
+<script src="/assets/js/project.js?v={{ build_id }}" defer></script>
+<script src="/assets/js/center.js?v={{ build_id }}" defer></script>
+{% endblock %}

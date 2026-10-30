@@ -476,6 +476,15 @@ PAGES = {
     "contact":    {"path": "/contact",     "title": "공실개발 상담 | 주식회사 블랭크 — 공백", "desc": "공간 주소·층수·면적·현재 상태를 보내주시면 영업일 기준 2~3일 내 1차 검토 방향을 회신드립니다."},
     "privacy":    {"path": "/privacy",     "title": "개인정보처리방침 — 공백 | 주식회사 블랭크", "desc": "주식회사 블랭크의 개인정보 수집·이용·보유·위탁 및 정보주체 권리 안내입니다."},
     "terms":      {"path": "/terms",       "title": "이용약관 — 공백 | 주식회사 블랭크", "desc": "공백 홈페이지 이용약관입니다."},
+    "signup":     {"path": "/signup",          "title": "회원가입 — 공백", "desc": "공백 회원으로 가입하면 문의 정보 자동 입력과 문의 내역 확인을 이용할 수 있습니다.", "noindex": True},
+    "login":      {"path": "/login",           "title": "로그인 — 공백", "desc": "공백 회원 로그인", "noindex": True},
+    "forgot":     {"path": "/forgot-password", "title": "비밀번호 찾기 — 공백", "desc": "공백 회원 비밀번호 재설정", "noindex": True},
+    "reset":      {"path": "/reset-password",  "title": "새 비밀번호 — 공백", "desc": "공백 회원 비밀번호 재설정", "noindex": True},
+    "account":    {"path": "/account",         "title": "마이페이지 — 공백", "desc": "회원 정보와 문의 내역", "noindex": True},
+    "admin":      {"path": "/admin",           "title": "관리자 — 공백", "desc": "문의·회원 관리", "noindex": True},
+    "docview":    {"path": "/documents/view",  "title": "받은 자료 — 공백", "desc": "공백에서 보낸 자료", "noindex": True},
+    "center":     {"path": "/center",          "title": "임대인센터 — 공백", "desc": "공백이 초대한 임대인과 협력 파트너가 프로젝트 진행 상황을 함께 보는 곳", "noindex": True},
+    "setup":      {"path": "/setup-check",     "title": "설정 점검 — 공백", "desc": "홈페이지 기능 설정 점검", "noindex": True},
     "404":        {"path": "/404",         "title": "페이지를 찾을 수 없습니다 — 공백", "desc": "요청하신 페이지가 없습니다."},
 }
 

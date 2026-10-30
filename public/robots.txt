@@ -1,5 +1,11 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /account
+Disallow: /admin
+Disallow: /reset-password
+Disallow: /setup-check
+Disallow: /documents/
+Disallow: /center
 
 Sitemap: https://vacancy.co.kr/sitemap.xml

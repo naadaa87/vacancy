@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="auth">
+  <div class="wrap auth-grid">
+    <div class="auth-intro">
+      <div class="crumb tiny"><a href="/">홈</a> / 회원가입</div>
+      <h1>공백 회원가입</h1>
+      <p>회원으로 가입하시면 문의할 때마다 같은 정보를 다시 적지 않아도 되고, 보내신 문의의 진행 상태를 마이페이지에서 확인할 수 있습니다.</p>
+      <ul class="auth-benefits">
+        <li>문의 시 이름·연락처·이메일 자동 입력</li>
+        <li>내 문의 내역과 처리 상태 확인</li>
+        <li>(선택) 공실개발 사례·인사이트 소식 받기</li>
+      </ul>
+      <p class="tiny">이미 회원이신가요? <a class="link-more" href="/login">로그인</a></p>
+    </div>
+    <div class="auth-card">
+      <div class="auth-off" data-auth-off hidden>
+        <b>회원 기능 준비 중입니다.</b>
+        <p>지금은 회원가입 없이 <a href="/contact">문의하기</a>로 바로 상담을 요청하실 수 있습니다.</p>
+      </div>
+      <form id="signup-form" class="form" novalidate data-auth-form>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="s-email">이메일<span class="req" aria-hidden="true">*</span></label>
+            <input type="email" id="s-email" name="email" required autocomplete="email" placeholder="name@example.com">
+            <p class="err">사용 가능한 이메일을 입력해 주세요.</p>
+          </div>
+          <div class="field">
+            <label for="s-pw">비밀번호<span class="req" aria-hidden="true">*</span></label>
+            <input type="password" id="s-pw" name="password" required autocomplete="new-password" minlength="8">
+            <p class="hint">8자 이상, 영문과 숫자를 함께 사용</p>
+            <p class="err">8자 이상, 영문과 숫자를 함께 사용해 주세요.</p>
+          </div>
+          <div class="field">
+            <label for="s-pw2">비밀번호 확인<span class="req" aria-hidden="true">*</span></label>
+            <input type="password" id="s-pw2" name="password2" required autocomplete="new-password" data-match="s-pw">
+            <p class="err">비밀번호가 서로 다릅니다.</p>
+          </div>
+          <div class="field">
+            <label for="s-name">이름<span class="req" aria-hidden="true">*</span></label>
+            <input type="text" id="s-name" name="name" required autocomplete="name">
+            <p class="err">이름을 입력해 주세요.</p>
+          </div>
+          <div class="field">
+            <label for="s-phone">연락처<span class="opt">선택</span></label>
+            <input type="tel" id="s-phone" name="phone" autocomplete="tel" inputmode="tel" placeholder="010-0000-0000">
+            <p class="err">전화번호를 확인해 주세요.</p>
+          </div>
+          <div class="field">
+            <label for="s-role">구분<span class="req" aria-hidden="true">*</span></label>
+            <select id="s-role" name="role" required>
+              <option value="">선택</option>
+              <option value="owner">임대인·건물주</option>
+              <option value="seller">매각 예정 소유주·투자자</option>
+              <option value="broker">중개법인·공인중개사</option>
+              <option value="developer">시행사·디벨로퍼</option>
+              <option value="operator">운영사·브랜드</option>
+              <option value="other">기타</option>
+            </select>
+            <p class="err">구분을 선택해 주세요.</p>
+          </div>
+          <div class="field">
+            <label for="s-company">소속·회사<span class="opt">선택</span></label>
+            <input type="text" id="s-company" name="company" autocomplete="organization">
+          </div>
+          <div class="field full consent">
+            <label class="all"><input type="checkbox" id="s-all"><span><b>전체 동의</b></span></label>
+            <label><input type="checkbox" name="agree_terms" required data-agree><span><b>[필수]</b> <a href="/terms" target="_blank">이용약관</a>에 동의합니다.</span></label>
+            <label><input type="checkbox" name="agree_privacy" required data-agree><span><b>[필수]</b> 개인정보 수집·이용에 동의합니다.</span></label>
+            <p class="detail">수집 항목: 이메일, 비밀번호(암호화 저장), 이름, 구분 / 선택: 연락처, 소속 / 이용 목적: 회원 식별, 문의 접수·회신, 문의 이력 관리 / 보유 기간: 회원 탈퇴 시까지 (관계 법령에 따라 보존이 필요한 정보는 해당 기간) / 동의를 거부할 수 있으나 회원가입이 제한됩니다. <a href="/privacy" target="_blank">개인정보처리방침</a></p>
+            <label><input type="checkbox" name="marketing" data-agree><span>[선택] 공실개발 사례와 인사이트 소식을 이메일로 받겠습니다.</span></label>
+            <p class="err">필수 항목에 동의해 주세요.</p>
+          </div>
+          <div class="hp" aria-hidden="true"><label>회사 웹사이트<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+        </div>
+        <div class="form-status" role="status" aria-live="polite"></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">회원가입</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/assets/js/auth.js?v={{ build_id }}" defer></script>{% endblock %}

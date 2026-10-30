@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="auth">
+  <div class="wrap auth-grid">
+    <div class="auth-intro">
+      <div class="crumb tiny"><a href="/">홈</a> / 비밀번호 찾기</div>
+      <h1>비밀번호 재설정</h1>
+      <p>가입하신 이메일을 입력하시면 새 비밀번호를 정할 수 있는 링크를 보내드립니다. 링크는 1시간 동안 유효합니다.</p>
+      <p class="tiny"><a class="link-more" href="/login">로그인으로 돌아가기</a></p>
+    </div>
+    <div class="auth-card">
+      <form id="forgot-form" class="form" novalidate data-auth-form>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="f-email">가입한 이메일</label>
+            <input type="email" id="f-email" name="email" required autocomplete="email">
+            <p class="err">이메일을 입력해 주세요.</p>
+          </div>
+        </div>
+        <div class="form-status" role="status" aria-live="polite"></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">재설정 링크 받기</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/assets/js/auth.js?v={{ build_id }}" defer></script>{% endblock %}

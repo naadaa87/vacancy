@@ -25,6 +25,6 @@ export const onRequestGet = handle(async ({ request, env }) => {
     inquiries: one(inq), members: one(mem), deliveries: one(docs),
     series: series.results || [], by_type: byType.results || [], by_role: byRole.results || [], by_stage: byStage.results || [],
     recent: recent.results || [], overdue: overdue.results || [],
-    setup: { mail: mailConfigured(env), from: !!env.CONTACT_FROM, site_url: !!env.SITE_URL },
+    setup: { mail: mailConfigured(env), from: true, site_url: !!env.SITE_URL },
   });
 });

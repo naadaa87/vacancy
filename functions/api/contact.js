@@ -2,7 +2,7 @@
  * POST /api/contact — 문의 접수
  * 설정(Cloudflare Pages > Settings):
  *   Bindings  : D1 데이터베이스, 변수명 DB  → 문의 저장 + 관리자 페이지에서 확인
- *   Variables : RESEND_API_KEY(Secret), CONTACT_TO, CONTACT_FROM → 이메일 알림
+ *   Variables : RESEND_API_KEY(Secret) → 이메일 알림 (CONTACT_TO·CONTACT_FROM은 선택, 비우면 기본값)
  * 둘 중 하나만 설정돼도 접수됩니다. 둘 다 없으면 화면에서 '이메일로 보내기'로 대체 안내합니다.
  */
 import { json, fail, esc, clip, isEmail, nowIso, hasDb, db, currentUser, sendMail, mailConfigured, mailLayout, siteOrigin, LABEL } from '../../lib/server.js';

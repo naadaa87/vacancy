@@ -76,19 +76,21 @@ gongbaek-site/
 4. **API Keys → Create API Key** (Sending access) → 키 복사
 5. Cloudflare Pages → **Settings → Variables and Secrets → Add** (Production)
 
-| 변수 | 종류 | 값 |
-|---|---|---|
-| `RESEND_API_KEY` | **Secret** | 복사한 키 |
-| `CONTACT_FROM` | Text | `공백 <noreply@vacancy.co.kr>` |
-| `CONTACT_TO` | Text | `spaceblank0100@gmail.com` (문의 알림 받을 주소, 여러 개면 쉼표) |
-| `ADMIN_EMAILS` | Text | 관리자로 쓸 이메일 (예: `spaceblank0100@gmail.com`) |
-| `SITE_URL` | Text | `https://vacancy.co.kr` (메일 속 링크 주소) |
-| `SEND_CONFIRMATION` | Text | (선택) `off` 로 넣으면 문의자에게 가는 접수 확인 메일을 끔 |
+**꼭 넣을 값은 하나뿐입니다.** 나머지는 비워 두면 아래 기본값으로 동작하고, 바꾸고 싶을 때만 넣으면 됩니다.
+
+| 변수 | 종류 | 값 | 비워 두면 |
+|---|---|---|---|
+| `RESEND_API_KEY` | **Secret** | 복사한 키 (`re_`로 시작) | **필수** — 없으면 메일이 나가지 않음 |
+| `CONTACT_FROM` | Text | `공백 <noreply@vacancy.co.kr>` | 같은 값 사용 (Resend 도메인 인증 필요) |
+| `CONTACT_TO` | Text | 문의 알림 받을 주소 (여러 개면 쉼표) | `spaceblank0100@gmail.com` |
+| `ADMIN_EMAILS` | Text | 관리자로 쓸 이메일 (여러 개면 쉼표) | `spaceblank0100@gmail.com` |
+| `SITE_URL` | Text | `https://vacancy.co.kr` | 접속한 주소를 그대로 사용 |
+| `SEND_CONFIRMATION` | Text | `off` 로 넣으면 문의자에게 가는 접수 확인 메일을 끔 | 접수 확인 메일 보냄 |
 
 6. 다시 **Retry deployment**
 
 ### 2-3. 관리자 계정 만들기
-1. `https://vacancy.co.kr/signup` 에서 `ADMIN_EMAILS`에 넣은 이메일로 가입
+1. `https://vacancy.co.kr/signup` 에서 관리자 이메일(`ADMIN_EMAILS`, 비워 두면 `spaceblank0100@gmail.com`)로 가입
 2. 메일함의 **이메일 인증하기** 클릭 (관리자 권한은 이메일 인증을 마친 계정에만 열립니다)
 3. `https://vacancy.co.kr/admin` 접속 → 관리자 로그인 화면에서 로그인
 

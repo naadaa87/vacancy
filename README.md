@@ -12,8 +12,9 @@ gongbaek-site/
 │  ├─ insights/*.html   ← 인사이트 칼럼 6편
 │  ├─ assets/css/site.css · assets/js/*.js · assets/img/og-image.png
 │  ├─ _headers, _redirects, robots.txt, sitemap.xml, site.webmanifest, favicon.*
-├─ functions/api/contact.js   ← 문의 폼 접수 API (Cloudflare Pages Functions)
-├─ functions/schema.sql       ← (선택) D1에 문의 저장용 테이블
+├─ functions/api/            ← 서버 기능 (문의 접수, 회원가입·로그인, 마이페이지, 관리자)
+├─ functions/_middleware.js  ← *.pages.dev 미리보기 주소 정리
+├─ lib/server.js             ← 서버 공통 모듈 (DB 자동 생성, 비밀번호·세션, 메일)
 └─ tools/               ← 콘텐츠 데이터(data.py)와 HTML 생성 스크립트(build.py). 배포에는 포함되지 않음
 ```
 
@@ -52,31 +53,85 @@ gongbaek-site/
 
 ---
 
-## 2. 문의 폼을 실제로 받게 만들기
+## 2. 문의 접수·회원 기능 켜기 (Cloudflare 대시보드에서 클릭으로)
 
-문의 폼은 `/api/contact`(Cloudflare Pages Functions)로 전송됩니다. 아래 둘 중 하나 이상을 설정해야 접수됩니다.
-아무것도 설정하지 않으면 폼은 "이메일로 보내기" 버튼으로 자동 전환되어 작성 내용이 담긴 메일을 띄웁니다. (접수가 막히지는 않습니다.)
+문의 접수, 회원가입·로그인, 마이페이지, 관리자 페이지(/admin)는 모두 **D1 데이터베이스 1개 + 이메일 발송(Resend)** 으로 동작합니다.
+설정 상태는 언제든 `https://vacancy.co.kr/setup-check` 에서 확인할 수 있습니다.
 
-### 방법 A. 이메일 알림 (권장, 무료) — Resend
-1. resend.com 가입 → **API Keys** → **Create API Key** → 키 복사
-2. (권장) **Domains** → `vacancy.co.kr` 추가 → 안내되는 DNS 레코드를 Cloudflare DNS에 추가해 인증
-   - 인증 전에는 발신 주소가 `onboarding@resend.dev`로 고정되고, **가입한 본인 이메일로만** 수신됩니다.
-3. Cloudflare Pages 프로젝트 → **Settings → Variables and Secrets** → 추가 (Production, Preview 둘 다)
-   | 변수 | 값 |
-   |---|---|
-   | `RESEND_API_KEY` | 복사한 키 (Secret으로 저장) |
-   | `CONTACT_TO` | `spaceblank0100@gmail.com` |
-   | `CONTACT_FROM` | `공백 <noreply@vacancy.co.kr>` (도메인 인증 후) |
-4. **Deployments → Retry deployment** 로 다시 배포하면 적용됩니다.
+### 2-1. D1 데이터베이스 만들고 연결 (필수)
+1. Cloudflare → **Storage & databases → D1 SQL database → Create database**
+2. 이름 `gongbaek-db` → **Create** (위치는 기본값)
+3. **Workers & Pages → vacancy0100 → Settings → Bindings → Add → D1 database**
+4. Variable name: **`DB`** (대문자 그대로), D1 database: `gongbaek-db` → **Save**
+5. **Deployments** 탭 → 최신 배포의 `…` → **Retry deployment**
 
-### 방법 B. (선택) D1 데이터베이스에 저장
-1. **Workers & Pages → D1 → Create database** → 이름 `gongbaek-inquiries`
-2. 만들어진 DB의 **Console** 탭에서 `functions/schema.sql` 내용을 붙여넣고 실행
-3. Pages 프로젝트 → **Settings → Bindings → Add → D1 database** → Variable name `DB`, 위 DB 선택
-4. 다시 배포. 이후 D1 콘솔에서 `SELECT * FROM inquiries ORDER BY id DESC;` 로 확인할 수 있습니다.
+테이블은 사이트가 처음 DB에 접근할 때 자동으로 만들어집니다. SQL을 실행할 필요가 없습니다.
+이 단계만 끝나도 문의가 DB에 저장되고 회원가입이 됩니다.
 
-### (선택) 봇 차단 — Turnstile
-`TURNSTILE_SECRET` 변수를 넣으면 Turnstile 검증을 요구합니다. 이 경우 `contact.html` 폼 안에 Turnstile 위젯 스크립트를 함께 넣어야 합니다. 기본 상태에서는 허니팟 필드로만 봇을 거릅니다.
+### 2-2. 이메일 발송 설정 — Resend (문의 알림·인증 메일·비밀번호 찾기)
+1. resend.com 가입 → **Domains → Add Domain** → `vacancy.co.kr`
+2. 안내되는 DNS 레코드(TXT·MX 등)를 Cloudflare → vacancy.co.kr → **DNS → Records**에 그대로 추가 (Proxy 끔, 회색 구름)
+   - Resend 화면에 Cloudflare 자동 연결 버튼이 보이면 그걸 쓰면 더 쉽습니다.
+3. Resend에서 **Verify** → Verified 표시 확인
+4. **API Keys → Create API Key** (Sending access) → 키 복사
+5. Cloudflare Pages → **Settings → Variables and Secrets → Add** (Production)
+
+| 변수 | 종류 | 값 |
+|---|---|---|
+| `RESEND_API_KEY` | **Secret** | 복사한 키 |
+| `CONTACT_FROM` | Text | `공백 <noreply@vacancy.co.kr>` |
+| `CONTACT_TO` | Text | `spaceblank0100@gmail.com` (문의 알림 받을 주소, 여러 개면 쉼표) |
+| `ADMIN_EMAILS` | Text | 관리자로 쓸 이메일 (예: `spaceblank0100@gmail.com`) |
+| `SITE_URL` | Text | `https://vacancy.co.kr` (메일 속 링크 주소) |
+| `SEND_CONFIRMATION` | Text | (선택) `off` 로 넣으면 문의자에게 가는 접수 확인 메일을 끔 |
+
+6. 다시 **Retry deployment**
+
+### 2-3. 관리자 계정 만들기
+1. `https://vacancy.co.kr/signup` 에서 `ADMIN_EMAILS`에 넣은 이메일로 가입
+2. 메일함의 **이메일 인증하기** 클릭 (관리자 권한은 이메일 인증을 마친 계정에만 열립니다)
+3. `https://vacancy.co.kr/admin` 접속 → 관리자 로그인 화면에서 로그인
+
+> Resend 설정 전에 관리자 화면을 먼저 쓰고 싶다면: D1 → gongbaek-db → **Console**에서
+> `UPDATE users SET email_verified = 1 WHERE email = '관리자이메일';` 실행
+
+### 2-4. 점검
+1. `/admin` → **설정 점검** 메뉴에서 항목 확인 (또는 `/setup-check`)
+2. 비로그인 상태로 `/contact`에서 테스트 문의 → 알림 메일 도착, 관리자 대시보드에 표시되는지 확인
+3. 관리자 화면에서 그 문의에 **회신 메일**을 보내고, **자료 보내기**로 PDF를 하나 보낸 뒤, 받은 메일의 버튼으로 열람 → **발송 이력**에서 '열람'으로 바뀌는지 확인
+
+### 2-5. 관리자 화면 (/admin) 사용법
+
+| 메뉴 | 할 수 있는 일 |
+|---|---|
+| **대시보드** | 처리 대기 문의, 최근 7일 문의, 회원 수, 자료 열람률 / 오늘 확인할 일(2일 넘게 대기 중인 신규 문의, 메일 실패, 설정 누락 등) / 최근 30일 문의 추이 / 진행 단계·문의 유형·고객 구분 분포 |
+| **문의 관리** | 단계별 목록(신규 → 검토 중 → 1차 회신 → 현장진단 → 제안 → 계약 / 보류·종료), 검색, 엑셀 내려받기 / 문의 상세: 단계 변경, 한 줄 메모, 처리 이력 기록, **고객에게 메일 회신**(보내면 자동으로 '1차 회신'), **자료 보내기**, 같은 고객의 다른 문의 |
+| **회원 관리** | 목록·검색·필터(수신 동의, 미인증, 구분별), 엑셀 내려받기, 여러 명 선택 → 자료 발송 / 회원 상세: 문의 내역·받은 자료, 이메일 인증 처리, 삭제 |
+| **자료·안내 발송** | 받는 사람: 선택한 회원 / 문의 고객 / 회원 그룹(전체·인증·수신 동의·구분별) / 이메일 직접 입력 · 문안 불러오기(진단 리포트, 현장진단 일정, 제안서, 뉴스레터) · 파일 첨부(10MB) 또는 링크 · 미리보기 · 받는 사람 수 확인 후 발송 |
+| **발송 이력** | 자료별 받는 사람, 메일 성공, **열람·다운로드 여부와 시각**, 다른 분께 추가 발송, 삭제 |
+| **설정 점검** | DB·메일·관리자 설정 상태와 운영 메모 |
+
+**받는 사람 쪽**: 메일의 버튼 → `/documents/view` 에서 내용 확인·파일 내려받기 (개인별 링크, 로그인 불필요). 회원은 마이페이지 **받은 자료**에서도 볼 수 있습니다.
+
+**광고성 메일(뉴스레터·프로모션)**: '광고성 정보'를 체크하면 제목에 (광고) 표기, 마케팅 수신 동의 회원에게만 발송, 하단에 수신거부 링크·회사 정보 자동 삽입, 수신거부 즉시 반영(정보통신망법 제50조). 야간(21시~08시) 광고 발송은 별도 동의가 필요하니 낮에 보내세요.
+
+**한도·참고**
+- Resend 무료: 하루 100통·월 3,000통. 한 번에 최대 500명까지 발송합니다.
+- 첨부 파일은 D1에 나눠 저장합니다(10MB 이하). R2 설정이 필요 없습니다.
+- 비밀번호 암호화 계산 때문에 Cloudflare **Workers 유료 요금제(월 $5)** 를 권장합니다. 무료 요금제는 요청당 CPU 시간이 짧아 로그인이 가끔 실패할 수 있습니다.
+
+### 회원 기능 요약
+| 주소 | 기능 |
+|---|---|
+| `/signup` | 회원가입 (이메일·비밀번호·이름·구분 / 선택: 연락처·소속·마케팅 동의) |
+| `/login` | 로그인 (5회 실패 시 15분 잠금) |
+| `/forgot-password`, `/reset-password` | 비밀번호 재설정 메일 (1시간 유효) |
+| `/account` | 마이페이지 — 받은 자료, 내 문의 내역과 진행 단계, 내 정보 수정, 비밀번호 변경, 탈퇴 |
+| `/documents/view` | 받은 자료 보기·내려받기 |
+| `/admin` | 관리자 시스템 |
+
+**보안**: 비밀번호는 PBKDF2-SHA256(10만 회)로 해시 저장, 로그인은 HttpOnly·Secure 쿠키(30일), 다른 사이트에서 보내는 요청 차단, 비밀번호 변경·재설정 시 다른 기기 로그아웃.
+회원·관리 페이지는 검색엔진 수집에서 제외됩니다(noindex, robots.txt).
 
 ---
 

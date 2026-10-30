@@ -21,6 +21,11 @@
     window.addEventListener('resize', fitBuilding);
   }
 
+  // 로그인 상태면 '로그인' 링크를 '마이페이지'로 바꿉니다 (gb_li 쿠키는 표시용 힌트)
+  if (/(?:^|;\s*)gb_li=1/.test(document.cookie)) {
+    document.querySelectorAll('[data-auth-link]').forEach(function (a) { a.textContent = '마이페이지'; a.href = '/account'; });
+  }
+
   if (toggle && menu) {
     toggle.addEventListener('click', function () {
       var open = toggle.getAttribute('aria-expanded') === 'true';
@@ -33,7 +38,7 @@
       if (e.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') toggle.click();
     });
     window.addEventListener('resize', function () {
-      if (window.innerWidth > 960 && toggle.getAttribute('aria-expanded') === 'true') toggle.click();
+      if (window.innerWidth > 1120 && toggle.getAttribute('aria-expanded') === 'true') toggle.click();
     });
   }
 })();

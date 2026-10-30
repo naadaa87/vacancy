@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="auth">
+  <div class="wrap auth-grid">
+    <div class="auth-intro">
+      <div class="crumb tiny"><a href="/">홈</a> / 로그인</div>
+      <h1>로그인</h1>
+      <p>로그인하면 문의 정보가 자동으로 채워지고, 마이페이지에서 문의 내역을 확인할 수 있습니다.</p>
+      <p class="tiny">아직 회원이 아니신가요? <a class="link-more" href="/signup">회원가입</a></p>
+      <p class="tiny" style="margin-top:8px">회원가입 없이도 <a class="link-more" href="/contact">문의하기</a>로 상담을 요청하실 수 있습니다.</p>
+    </div>
+    <div class="auth-card">
+      <div class="auth-off" data-auth-off hidden>
+        <b>회원 기능 준비 중입니다.</b>
+        <p>지금은 <a href="/contact">문의하기</a>로 바로 상담을 요청하실 수 있습니다.</p>
+      </div>
+      <form id="login-form" class="form" novalidate data-auth-form>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="l-email">이메일</label>
+            <input type="email" id="l-email" name="email" required autocomplete="email">
+            <p class="err">이메일을 입력해 주세요.</p>
+          </div>
+          <div class="field full">
+            <label for="l-pw">비밀번호</label>
+            <input type="password" id="l-pw" name="password" required autocomplete="current-password">
+            <p class="err">비밀번호를 입력해 주세요.</p>
+          </div>
+        </div>
+        <div class="form-status" role="status" aria-live="polite"></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">로그인</button>
+        <p class="auth-links"><a href="/forgot-password">비밀번호를 잊으셨나요?</a></p>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/assets/js/auth.js?v={{ build_id }}" defer></script>{% endblock %}

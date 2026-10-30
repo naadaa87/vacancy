@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공백 관리자</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="/assets/css/site.css?v={{ build_id }}">
+<link rel="stylesheet" href="/assets/css/admin.css?v={{ build_id }}">
+</head>
+<body class="adm">
+<div class="adm-boot" id="boot">불러오는 중…</div>
+
+<!-- 로그인 -->
+<section class="adm-gate" id="gate" hidden>
+  <div class="gate-card">
+    <div class="gate-brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1.5" y="1.5" width="31" height="31" rx="4" fill="none" stroke="#141619" stroke-width="2.2"/><rect x="7" y="7" width="9" height="9" fill="#141619"/><rect x="18" y="7" width="9" height="9" fill="none" stroke="#141619" stroke-width="1.6" stroke-dasharray="2 2"/><rect x="7" y="18" width="9" height="9" fill="none" stroke="#141619" stroke-width="1.6" stroke-dasharray="2 2"/><rect x="18" y="18" width="9" height="9" fill="#e5501c"/></svg>
+      <b>GONG BAEK</b><span>관리자</span>
+    </div>
+    <form id="gate-login" class="form" novalidate>
+      <div class="field"><label for="g-email">관리자 이메일</label><input type="email" id="g-email" name="email" autocomplete="email" required></div>
+      <div class="field"><label for="g-pw">비밀번호</label><input type="password" id="g-pw" name="password" autocomplete="current-password" required></div>
+      <div class="form-status" role="status" aria-live="polite"></div>
+      <button type="submit" class="btn btn-primary btn-lg btn-block">로그인</button>
+    </form>
+    <div id="gate-msg" class="gate-msg" hidden></div>
+    <p class="gate-foot"><a href="/">홈페이지로 돌아가기</a> · <a href="/forgot-password">비밀번호 찾기</a></p>
+  </div>
+</section>
+
+<!-- 관리자 앱 -->
+<div class="adm-app" id="app" hidden>
+  <aside class="adm-side">
+    <a class="adm-logo" href="#/">
+      <svg width="28" height="28" viewBox="0 0 34 34" aria-hidden="true"><rect x="1.5" y="1.5" width="31" height="31" rx="4" fill="none" stroke="#141619" stroke-width="2.2"/><rect x="7" y="7" width="9" height="9" fill="#141619"/><rect x="18" y="7" width="9" height="9" fill="none" stroke="#141619" stroke-width="1.6" stroke-dasharray="2 2"/><rect x="7" y="18" width="9" height="9" fill="none" stroke="#141619" stroke-width="1.6" stroke-dasharray="2 2"/><rect x="18" y="18" width="9" height="9" fill="#e5501c"/></svg>
+      <span><b>공백</b> 관리자</span>
+    </a>
+    <nav class="adm-nav" aria-label="관리 메뉴">
+      <a href="#/" data-nav="dashboard">대시보드</a>
+      <a href="#/inquiries" data-nav="inquiries">문의 관리 <span class="badge" id="nav-open" hidden>0</span></a>
+      <a href="#/members" data-nav="members">회원 관리</a>
+      <a href="#/send" data-nav="send">자료·안내 발송</a>
+      <a href="#/documents" data-nav="documents">발송 이력</a>
+      <a href="#/settings" data-nav="settings">설정 점검</a>
+    </nav>
+    <div class="adm-me">
+      <div><b id="me-name"></b><span id="me-email"></span></div>
+      <a href="/" target="_blank" rel="noopener">홈페이지 보기</a>
+      <button type="button" id="logout">로그아웃</button>
+    </div>
+  </aside>
+  <main class="adm-main" id="view" tabindex="-1"></main>
+</div>
+<div class="adm-toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="/assets/js/admin.js?v={{ build_id }}" defer></script>
+</body>
+</html>

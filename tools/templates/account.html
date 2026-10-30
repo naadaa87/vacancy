@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="page-head">
+  <div class="wrap">
+    <div class="crumb"><a href="/">홈</a><span>/</span><span>마이페이지</span></div>
+    <h1 id="acc-title">마이페이지</h1>
+    <p id="acc-sub">회원 정보와 문의 내역을 확인합니다.</p>
+    <div class="acts" id="acc-acts" hidden>
+      <a class="btn btn-primary" href="/contact">새 문의하기</a>
+      <a class="btn btn-outline" href="/admin" id="acc-admin" hidden>관리자 페이지</a>
+      <button type="button" class="btn btn-outline" id="acc-logout">로그아웃</button>
+    </div>
+  </div>
+</section>
+<section class="section-tight">
+  <div class="wrap">
+    <div class="notice" id="acc-flash" hidden></div>
+    <div id="acc-loading" class="muted">불러오는 중…</div>
+    <div id="acc-body" hidden>
+      <div class="notice notice-navy" id="acc-verify" hidden>
+        <b>이메일 인증이 아직 완료되지 않았습니다.</b> 가입하신 이메일로 보낸 인증 링크를 눌러 주세요.
+        <button type="button" class="btn btn-ink btn-sm" id="acc-resend" style="margin-left:8px">인증 메일 다시 받기</button>
+      </div>
+
+      <div class="acc-grid">
+        <div class="acc-block">
+          <h2>받은 자료</h2>
+          <div id="acc-docs" style="margin-bottom:40px"><p class="muted">불러오는 중…</p></div>
+          <h2>내 문의 내역</h2>
+          <div id="acc-inq"><p class="muted">불러오는 중…</p></div>
+        </div>
+
+        <div class="acc-block">
+          <h2>내 정보</h2>
+          <form id="profile-form" class="form" novalidate>
+            <div class="form-grid">
+              <div class="field full"><label>이메일</label><input type="email" id="p-email" disabled></div>
+              <div class="field"><label for="p-name">이름</label><input type="text" id="p-name" name="name" required><p class="err">이름을 입력해 주세요.</p></div>
+              <div class="field"><label for="p-phone">연락처</label><input type="tel" id="p-phone" name="phone"><p class="err">전화번호를 확인해 주세요.</p></div>
+              <div class="field"><label for="p-role">구분</label>
+                <select id="p-role" name="role" required>
+                  <option value="owner">임대인·건물주</option><option value="seller">매각 예정 소유주·투자자</option><option value="broker">중개법인·공인중개사</option>
+                  <option value="developer">시행사·디벨로퍼</option><option value="operator">운영사·브랜드</option><option value="other">기타</option>
+                </select></div>
+              <div class="field"><label for="p-company">소속·회사</label><input type="text" id="p-company" name="company"></div>
+              <div class="field full consent"><label><input type="checkbox" id="p-mkt" name="marketing"><span>공실개발 사례와 인사이트 소식을 이메일로 받겠습니다.</span></label></div>
+            </div>
+            <div class="form-status" role="status" aria-live="polite"></div>
+            <button type="submit" class="btn btn-ink">내 정보 저장</button>
+          </form>
+
+          <h2 style="margin-top:44px">비밀번호 변경</h2>
+          <form id="password-form" class="form" novalidate>
+            <div class="form-grid">
+              <div class="field full"><label for="pw-cur">현재 비밀번호</label><input type="password" id="pw-cur" name="current" required autocomplete="current-password"><p class="err">현재 비밀번호를 확인해 주세요.</p></div>
+              <div class="field"><label for="pw-new">새 비밀번호</label><input type="password" id="pw-new" name="password" required autocomplete="new-password"><p class="err">8자 이상, 영문과 숫자를 함께 사용해 주세요.</p></div>
+              <div class="field"><label for="pw-new2">새 비밀번호 확인</label><input type="password" id="pw-new2" name="password2" required autocomplete="new-password" data-match="pw-new"><p class="err">비밀번호가 서로 다릅니다.</p></div>
+            </div>
+            <div class="form-status" role="status" aria-live="polite"></div>
+            <button type="submit" class="btn btn-ink">비밀번호 변경</button>
+          </form>
+
+          <details class="acc-danger">
+            <summary>회원 탈퇴</summary>
+            <p>탈퇴하면 회원 정보와 로그인 기록이 삭제됩니다. 이미 접수된 문의는 상담 이력 보관 기간(상담 종료 후 1년) 동안 회원 연결 없이 보관된 뒤 파기됩니다.</p>
+            <form id="delete-form" class="form" novalidate>
+              <div class="field"><label for="del-pw">비밀번호 확인</label><input type="password" id="del-pw" name="password" required autocomplete="current-password"><p class="err">비밀번호를 확인해 주세요.</p></div>
+              <div class="form-status" role="status" aria-live="polite"></div>
+              <button type="submit" class="btn btn-outline">회원 탈퇴</button>
+            </form>
+          </details>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/assets/js/auth.js?v={{ build_id }}" defer></script>{% endblock %}

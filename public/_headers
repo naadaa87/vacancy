@@ -10,3 +10,14 @@
 
 /*.html
   Cache-Control: public, max-age=0, must-revalidate
+
+/account
+  Cache-Control: no-store
+/admin
+  Cache-Control: no-store
+/reset-password
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer
+/documents/*
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer

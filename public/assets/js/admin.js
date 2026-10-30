@@ -129,7 +129,6 @@
       if ((I.open || 0) - (I.fresh || 0) > 0) todo.push(['amber', '<a href="#/inquiries?stage=review">검토 중인 문의 ' + (I.open - I.fresh) + '건</a>', '1차 회신이 나가면 자동으로 다음 단계로 바뀝니다.']);
       if (D.failed) todo.push(['red', '<a href="#/documents">메일 발송 실패 ' + D.failed + '건</a>', '받는 사람은 마이페이지(회원)에서 자료를 볼 수 있지만, 메일 설정을 확인해 주세요.']);
       if (!j.setup.mail) todo.push(['red', '<a href="#/settings">이메일 발송이 설정되지 않음</a>', '문의 알림, 고객 회신, 자료 발송 메일이 나가지 않습니다.']);
-      else if (!j.setup.from) todo.push(['amber', '<a href="#/settings">보내는 주소(CONTACT_FROM) 미설정</a>', '도메인 인증 전 기본 주소로는 본인 메일로만 발송됩니다.']);
       if (C && C.counts.pending) todo.push(['red', '<a href="#/projects">임대인센터 확인 대기 ' + C.counts.pending + '건</a>', '임대인 공개를 요청한 파트너 글·자료, 임대인이 보낸 자료입니다.']);
       if (C && C.counts.overdue) todo.push(['amber', '<a href="#/projects">기한이 지난 추진사항 ' + C.counts.overdue + '건</a>', '담당 파트너에게 확인하거나 기한을 조정해 주세요.']);
       if (C && C.counts.stale) todo.push(['', '<a href="#/projects">2주 넘게 움직임이 없는 프로젝트 ' + C.counts.stale + '건</a>', '진행 상황을 한 줄이라도 남겨 두면 임대인이 안심합니다.']);
@@ -458,9 +457,9 @@
         '<div class="grid2"><div><ul class="check-list">' +
           row(h.db_bound && h.db_ready, '데이터베이스 (DB)', h.db_ready ? '연결되어 있고 테이블이 준비되었습니다.' : 'Settings → Bindings → D1 database, 변수명 <code>DB</code>') +
           row(h.mail, '이메일 발송 (RESEND_API_KEY)', h.mail ? '문의 알림·회신·자료 발송 메일을 보낼 수 있습니다.' : 'Settings → Variables and Secrets에 Secret으로 추가') +
-          row(h.mail_from_set, '보내는 주소 (CONTACT_FROM)', h.mail_from_set ? '설정됨' : 'Resend에서 vacancy.co.kr 도메인 인증 후 <code>공백 &lt;noreply@vacancy.co.kr&gt;</code>') +
-          row(h.contact_to_set, '문의 알림 받는 주소 (CONTACT_TO)', h.contact_to_set ? '설정됨' : '비워 두면 spaceblank0100@gmail.com') +
-          row(h.admin_set, '관리자 이메일 (ADMIN_EMAILS)', h.admin_set ? '설정됨' : '관리자로 쓸 이메일, 여러 개면 쉼표로 구분') +
+          row(h.mail_from_set, '보내는 주소 (CONTACT_FROM)', h.mail_from_default ? '기본값 noreply@vacancy.co.kr 사용 중 (Resend 도메인 인증 필요)' : '설정됨') +
+          row(h.contact_to_set, '문의 알림 받는 주소 (CONTACT_TO)', h.contact_to_default ? '기본값 spaceblank0100@gmail.com 사용 중' : '설정됨') +
+          row(h.admin_set, '관리자 이메일 (ADMIN_EMAILS)', h.admin_default ? '기본값 spaceblank0100@gmail.com 사용 중' : '설정됨') +
         '</ul></div><div><div class="card"><h2>운영 메모</h2><ul class="todo">' +
           '<li><span class="dot"></span><div><b>메일 발송 한도</b><p>Resend 무료 요금제는 하루 100통, 월 3,000통입니다. 뉴스레터를 자주 보내면 유료 요금제를 검토하세요.</p></div></li>' +
           '<li><span class="dot"></span><div><b>첨부 파일</b><p>파일은 데이터베이스에 나눠 저장합니다(10MB 이하). D1 무료 용량은 5GB입니다.</p></div></li>' +

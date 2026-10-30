@@ -20,19 +20,31 @@
   }
   var next = encodeURIComponent('/center' + location.hash);
 
+  // 로그인 전: 임대인센터 소개와 로그인 안내 (프로젝트 정보는 보내지 않음)
+  function landing() {
+    app.innerHTML = '<div class="ct-landing">' +
+      '<div class="card ct-login"><span class="ct-lock" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></span>' +
+        '<h2>로그인하면 내 프로젝트가 보입니다</h2><p>임대인센터에는 로그인한 분과 관련된 프로젝트만 표시됩니다. 다른 분의 프로젝트나 건물 정보는 보이지 않습니다.</p>' +
+        '<div class="acts"><a class="btn btn-primary" href="/login?next=' + next + '">로그인</a><a class="btn btn-outline" href="/signup?next=' + next + '">회원가입</a></div>' +
+        '<p class="ct-hint">공백에서 안내 메일을 받으셨다면, 메일을 받은 이메일 주소로 가입하고 이메일 인증을 마치면 프로젝트가 자동으로 연결됩니다.</p></div>' +
+      '<div class="ct-who"><div class="card"><h3>임대인</h3><p>공백에 건물을 맡기신 분</p><ul class="ct-checks"><li>진행 단계와 공백의 보고를 한곳에서 확인</li><li>요청드린 자료를 바로 올리기</li><li>궁금한 점을 남기면 공백이 답변</li></ul></div>' +
+        '<div class="card"><h3>협력 파트너</h3><p>공백과 함께 프로젝트를 진행하는 중개·자산운용·명도·투자유치·리테일 담당</p><ul class="ct-checks"><li>참여 중인 프로젝트의 건물 정보와 추진사항</li><li>검토 의견과 진행 보고 공유</li><li>내 담당 업무와 정산 조건 확인</li></ul></div></div>' +
+      '<p class="ct-note">아직 의뢰 전이시라면 <a class="link-more" href="/contact">공간 검토 요청</a>을 남겨 주세요. 검토 후 프로젝트가 시작되면 임대인센터에서 진행 상황을 보실 수 있습니다.</p></div>';
+  }
+
   function boot() {
     req('GET', '/api/auth/me').then(function (j) {
       if (j.configured === false || j._status === 404) return gate('준비 중입니다', '<p>임대인센터가 아직 준비되지 않았습니다. 공백으로 연락 주시면 진행 상황을 바로 안내드리겠습니다.</p>', '<a class="btn btn-primary" href="/contact">문의하기</a>');
-      if (!j.user) return gate('로그인이 필요합니다', '<p>임대인센터는 공백이 초대한 임대인과 협력 파트너만 이용할 수 있습니다. 안내 메일을 받은 이메일 주소로 로그인해 주세요. 처음이시면 같은 주소로 회원가입하고 이메일 인증을 마치면 자동으로 연결됩니다.</p>',
-        '<a class="btn btn-primary" href="/login?next=' + next + '">로그인</a><a class="btn btn-outline" href="/signup?next=' + next + '">회원가입</a>');
+      if (!j.user) return landing();
       ME = j.user;
       if (!ME.email_verified) {
         gate('이메일 인증을 마쳐 주세요', '<p>' + esc(ME.email) + ' 주소로 보낸 인증 메일의 링크를 누르면 임대인센터가 열립니다. 메일이 보이지 않으면 스팸함도 확인해 주세요.</p>', '<button type="button" class="btn btn-primary" id="ct-resend">인증 메일 다시 받기</button><a class="btn btn-outline" href="/account">마이페이지</a>');
         $('#ct-resend').onclick = function (e) { e.target.disabled = true; req('POST', '/api/auth/resend-verification', {}).then(function (k) { e.target.textContent = k.ok ? '보냈습니다. 메일함을 확인해 주세요' : '보내지 못했습니다. 잠시 후 다시 시도해 주세요'; }); };
         return;
       }
-      if (!j.center) return gate('이용 권한이 없는 계정입니다', '<p>' + esc(ME.email) + ' 계정에는 임대인센터 이용 권한이 없습니다. 공백에서 안내 메일을 받으셨다면 그 메일을 받은 주소로 로그인했는지 확인해 주세요.</p>',
-        '<button type="button" class="btn btn-outline" id="ct-out">다른 계정으로 로그인</button><a class="btn btn-outline" href="/contact">공백에 문의하기</a>');
+      if (!j.center) return gate('연결된 프로젝트가 없습니다', '<p>' + esc(ME.email) + ' 계정에 연결된 프로젝트가 아직 없습니다. 임대인센터에는 로그인한 분과 관련된 프로젝트만 표시됩니다.</p>' +
+        '<ul class="ct-checks"><li>공백에서 안내 메일을 받으셨다면, 그 메일을 받은 주소로 로그인했는지 확인해 주세요.</li><li>공백이 프로젝트를 연결하면 이 화면에 바로 나타납니다.</li><li>건물의 공실·임차·매각 등을 맡기시려면 공간 검토 요청을 남겨 주세요.</li></ul>',
+        '<a class="btn btn-primary" href="/contact">공간 검토 요청</a><button type="button" class="btn btn-outline" id="ct-out">다른 계정으로 로그인</button><a class="btn btn-outline" href="/account">마이페이지</a>');
       ROLE = j.center;
       route(); window.addEventListener('hashchange', route);
     });

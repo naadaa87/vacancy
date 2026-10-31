@@ -120,7 +120,7 @@
           api('/api/center/project', { id: P.id, action: 'stage', stage: s, notify: !!($('#pj-stage-mail') || {}).checked }).then(function (j) { if (j.ok) { toast('단계를 바꿨습니다.' + (j.mailed ? ' 메일 ' + j.mailed + '통 발송' : '')); load(true); } });
         };
       });
-      var stp = $('.pj-steps', root), cur = $('.pj-steps li.on', root); if (stp && cur && stp.scrollWidth > stp.clientWidth) stp.scrollLeft = Math.max(0, cur.offsetLeft - stp.offsetLeft - 40);
+      var stp = $('.pj-steps', root), cur = $('.pj-steps li.on', root); if (stp && cur && stp.scrollWidth > stp.clientWidth) { var prev = cur.previousElementSibling || cur; stp.scrollLeft = Math.max(0, prev.offsetLeft - stp.offsetLeft); }
       var as = $('#pj-as'); if (as) as.onchange = function () { if (as.value) location.hash = base + id + '?as=' + encodeURIComponent(as.value); };
       var body = $('#pj-body');
       ({ overview: overview, building: building, tasks: tasksTab, feed: feed, files: files, people: people, money: money, log: logTab, terms: terms }[tab])(body);

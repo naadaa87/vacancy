@@ -127,8 +127,9 @@ body.adm { background: var(--paper-2); font-size: 0.97rem; }
 .stage-pick { display: flex; flex-wrap: wrap; gap: 6px; }
 .stage-pick button { border: 1px solid var(--line-2); background: #fff; padding: 7px 11px; border-radius: var(--radius); font-size: var(--fs-sm); cursor: pointer; }
 .stage-pick button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
-.inline-form { display: flex; gap: 8px; margin-top: 10px; }
-.inline-form input { flex: 1; padding: 9px 12px; border: 1px solid var(--line-2); border-radius: var(--radius); font: inherit; font-size: var(--fs-sm); }
+.inline-form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.inline-form input, .inline-form select { flex: 1 1 180px; min-width: 0; }
+.inline-form input { padding: 9px 12px; border: 1px solid var(--line-2); border-radius: var(--radius); font: inherit; font-size: var(--fs-sm); }
 .timeline-a { display: grid; gap: 0; }
 .timeline-a li { padding: 12px 0 12px 18px; border-left: 2px solid var(--line); position: relative; font-size: var(--fs-sm); }
 .timeline-a li::before { content: ""; position: absolute; left: -6px; top: 17px; width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 2px solid var(--line-2); }
@@ -202,3 +203,16 @@ body.adm { background: var(--paper-2); font-size: 0.97rem; }
 .pj-ptbl .pj-ptitle { min-width: 260px; }
 .pj-ptbl .pj-pk { margin: 4px 0 2px; display: flex; gap: 4px; flex-wrap: wrap; }
 .pj-ptbl td.ellipsis { max-width: 200px; }
+
+/* 그리드 칸이 안쪽 표·입력칸 너비 때문에 화면 밖으로 밀리지 않도록 */
+.grid2 > *, .kpis > *, .pj-bgrid > *, .pj-fgrid > *, .pj-member-row > *, .pj-fees > *, .pj-tgrid > *, .pj-ugrid > *, .ct-home > *, .ct-landing > * { min-width: 0; }
+.form-v input, .form-v select, .form-v textarea { min-width: 0; max-width: 100%; }
+.dl dd { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .dl { grid-template-columns: 6em 1fr; }
+  .card { padding: 18px 16px; }
+  .v-head .acts { width: 100%; }
+  .kpi .v { font-size: 1.6rem; }
+  .kpi .v.sm { font-size: 1.1rem; }
+  .pj-fgrid { grid-template-columns: 1fr; }
+}

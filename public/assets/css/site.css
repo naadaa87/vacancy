@@ -112,6 +112,7 @@ button { font: inherit; }
 .site-header {
   position: sticky; top: 0; z-index: 50;
   background: rgba(255,255,255,.92);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
   backdrop-filter: saturate(140%) blur(10px);
   border-bottom: 1px solid transparent;
   transition: border-color .2s;
@@ -143,7 +144,11 @@ button { font: inherit; }
 .mobile-menu li a { display: block; padding: 14px 0; font-size: 1.15rem; font-weight: 600; border-bottom: 1px solid var(--line); }
 .mobile-menu-foot { display: flex; flex-direction: column; gap: 6px; padding: 12px var(--gutter) 22px; color: var(--ink-2); font-size: var(--fs-sm); }
 body.menu-open { overflow: hidden; }
-body.menu-open .mobile-menu { display: block; position: fixed; inset: 72px 0 0 0; overflow: auto; z-index: 49; }
+/* 헤더의 흐림 효과(backdrop-filter)는 안쪽 고정(fixed) 요소의 기준을 헤더로 바꿔 메뉴 높이가 0이 됩니다.
+   메뉴를 열 때는 흐림 효과를 끄고, 높이도 화면 기준으로 직접 지정합니다. */
+body.menu-open .site-header { -webkit-backdrop-filter: none; backdrop-filter: none; background: #fff; border-bottom-color: var(--line); }
+body.menu-open .mobile-menu { display: block; position: fixed; top: 72px; left: 0; right: 0; bottom: 0; height: calc(100vh - 72px); height: calc(100dvh - 72px);
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; z-index: 49; padding-bottom: env(safe-area-inset-bottom); }
 
 @media (max-width: 1240px) {
   .site-nav, .header-actions .link-quiet { display: none; }
@@ -625,13 +630,13 @@ body.menu-open .mobile-menu { display: block; position: fixed; inset: 72px 0 0 0
 .footer-links { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: var(--fs-xs); color: var(--ink-3); }
 .footer-links b { color: var(--ink); }
 @media (max-width: 860px) { .footer-top { grid-template-columns: 1fr; gap: 28px; } }
-@media (max-width: 560px) { .footer-nav { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .footer-nav { grid-template-columns: 1fr 1fr; } .footer-nav > div:last-child { grid-column: 1 / -1; } }
 @media (min-width: 901px) { .site-footer { padding-bottom: 28px; } }
 
 /* ---------- 모바일 고정 CTA ---------- */
 .sticky-cta { display: none; }
 @media (max-width: 900px) {
-  .sticky-cta { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 10px var(--gutter) calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.94); backdrop-filter: blur(8px); border-top: 1px solid var(--line); }
+  .sticky-cta { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 10px var(--gutter) calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.94); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-top: 1px solid var(--line); }
   .sticky-cta .btn { width: 100%; }
   body.menu-open .sticky-cta { display: none; }
 }
@@ -742,3 +747,8 @@ body.menu-open .mobile-menu { display: block; position: fixed; inset: 72px 0 0 0
 .acc-center span { color: var(--ink-2); font-size: var(--fs-sm); }
 .acc-center em { font-style: normal; color: var(--point-dark); font-weight: 700; font-size: var(--fs-sm); white-space: nowrap; }
 @media (max-width: 600px) { .acc-center { grid-template-columns: 1fr; gap: 6px; } .acc-center b { border: 0; padding: 0; } }
+
+/* 휴대폰·태블릿: 입력칸 글자가 16px보다 작으면 iOS가 화면을 확대하므로 16px로 맞춥니다 */
+@media (max-width: 1024px), (pointer: coarse) {
+  input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]), select, textarea { font-size: 16px !important; }
+}

@@ -245,8 +245,10 @@ tr.is-cancel td { color: var(--ink-3); text-decoration: line-through; }
   .tk-main { grid-template-columns: 1fr; gap: 6px; }
   .tk-side { flex-direction: row; align-items: center; gap: 8px; flex-wrap: wrap; }
   .tk-sel { width: auto !important; }
-  .pj-tasklist li { grid-template-columns: auto 1fr; }
-  .pj-tasklist .tk-o, .pj-tasklist .tk-d { grid-column: 2; }
+  .pj-tasklist li { grid-template-columns: auto 1fr auto; row-gap: 2px; }
+  .pj-tasklist .tk-t { grid-column: 2 / 4; }
+  .pj-tasklist .tk-o { grid-column: 2; }
+  .pj-tasklist .tk-d { grid-column: 3; text-align: right; }
   .pj-pend li, .pj-asklist li { flex-direction: column; align-items: stretch; }
   .pj-steps li > * { padding: 9px 10px 9px 8px; }
   .pj-head-r { width: 100%; } .pj-head-r select { max-width: none; }
@@ -302,3 +304,9 @@ tr.is-cancel td { color: var(--ink-3); text-decoration: line-through; }
 .ct-checks li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 7px; height: 7px; border-radius: 2px; background: var(--point); }
 .ct-gate .ct-checks { margin: 14px 0 0; }
 @media (max-width: 860px) { .ct-landing { grid-template-columns: 1fr; } }
+
+/* 휴대폰·태블릿: 진행 상태 선택칸도 16px (iOS 자동 확대 방지) */
+@media (max-width: 1024px), (pointer: coarse) {
+  .tk-sel { font-size: 16px !important; min-height: 38px !important; }
+  .pj-member-acts, .pj-btns, .pj-pend-acts { flex-wrap: wrap; }
+}

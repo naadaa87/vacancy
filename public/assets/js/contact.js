@@ -75,6 +75,7 @@
       return r.json().catch(function () { return { ok: r.ok }; }).then(function (j) { j._status = r.status; return j; });
     }).then(function (j) {
       if (j.ok || j.success) {
+        try { if (window.gbTrack) window.gbTrack('goal', 'contact_submit', data.type || ''); } catch (e) {}
         form.hidden = true; done.hidden = false;
         done.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;

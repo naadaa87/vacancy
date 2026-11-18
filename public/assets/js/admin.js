@@ -29,7 +29,10 @@
     return fetch(path, opt).then(function (r) { return r.json().catch(function () { return { ok: false, error: r.status === 404 ? 'not_found' : 'server_error' }; }).then(function (j) { j._status = r.status; return j; }); })
       .catch(function () { return { ok: false, error: 'server_error' }; });
   }
-  var get = function (p) { return req('GET', p); }, post = function (p, b) { return req('POST', p, b); };
+  // 화면을 빨리 옮길 때, 이전 화면의 늦게 온 응답이 새 화면을 덮어쓰지 않도록 화면 번호를 확인합니다
+  var SEQ = 0;
+  var get = function (p) { var t = SEQ; return req('GET', p).then(function (j) { return t === SEQ ? j : new Promise(function () {}); }); };
+  var post = function (p, b) { return req('POST', p, b); };
   function errText(j) { return (j && (j.message || ERR[j.error])) || ERR.server_error; }
   function setTitle(t) { document.title = t + ' — 공백 관리자'; }
   function qs() { var h = location.hash.split('?')[1] || ''; var o = {}; h.split('&').forEach(function (kv) { if (kv) { var p = kv.split('='); o[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ''); } }); return o; }
@@ -48,6 +51,8 @@
           : '관리자 권한은 이메일 인증을 마친 계정에만 열립니다. <a href="/account">마이페이지</a>에서 인증 메일을 받아 인증해 주세요.', true);
       }
       ME = j.user; MAIL = !!j.mail;
+      // 관리자 브라우저의 홈페이지 방문은 KPI 집계에서 뺍니다 (KPI 리포트 > 지표 설명에서 바꿀 수 있음)
+      try { if (localStorage.getItem('gb_notrack') == null) localStorage.setItem('gb_notrack', '1'); } catch (e) {}
       $('#me-name').textContent = ME.name; $('#me-email').textContent = ME.email;
       $('#gate').hidden = true; $('#app').hidden = false;
       route(); refreshBadge();
@@ -72,10 +77,10 @@
   });
   $('#logout').addEventListener('click', function () { post('/api/auth/logout', {}).then(function () { location.href = '/admin'; }); });
   function refreshBadge() {
-    get('/api/admin/inquiries?stage=open').then(function (j) {
+    req('GET', '/api/admin/inquiries?stage=open').then(function (j) {
       if (!j.ok) return; var n = (j.counts.new || 0) + (j.counts.review || 0); var b = $('#nav-open'); b.textContent = n; b.hidden = !n;
     });
-    get('/api/admin/center').then(function (j) {
+    req('GET', '/api/admin/center').then(function (j) {
       if (!j.ok) return; var n = (j.counts.pending || 0) + (j.counts.overdue || 0); var b = $('#nav-proj'); b.textContent = n; b.hidden = !n;
     });
   }
@@ -83,6 +88,7 @@
   /* ---------- 라우터 ---------- */
   var ROUTES = [
     [/^#?\/?$/, 'dashboard', dashboard],
+    [/^#\/kpi/, 'kpi', kpi],
     [/^#\/inquiries/, 'inquiries', inquiries],
     [/^#\/inquiry\/(\d+)/, 'inquiries', inquiry],
     [/^#\/members/, 'members', members],
@@ -102,6 +108,7 @@
   ];
   function route() {
     if (!ME) return;
+    SEQ++;
     var h = location.hash.split('?')[0] || '#/';
     for (var i = 0; i < ROUTES.length; i++) {
       var m = h.match(ROUTES[i][0]);
@@ -115,11 +122,28 @@
   }
   window.addEventListener('hashchange', route);
 
+  /* ---------- KPI 리포트 (kpi.js) ---------- */
+  function kpi() {
+    setTitle('KPI 리포트');
+    if (!window.GBKpi) { view.innerHTML = '<p class="muted-s">KPI 화면을 불러오지 못했습니다. 새로고침해 주세요.</p>'; return; }
+    window.GBKpi.mount(view, { get: get, toast: toast, qs: qs, errText: errText });
+  }
+
   /* ---------- 대시보드 ---------- */
+  function visitCard(V) {
+    if (!V || !V.ok) return '';
+    var w = V.week || {}, p = V.prev_week || {}, t = V.today || {};
+    var ch = '';
+    if (V.data_since && p.uv) { var r = Math.round((w.uv - p.uv) / p.uv * 100); ch = r ? ' <span class="d ' + (r > 0 ? 'up' : 'down') + '">' + (r > 0 ? '▲ ' : '▼ ') + Math.abs(r) + '%</span>' : ''; }
+    return '<div class="card visit-card"><h2>홈페이지 방문 <small><a href="#/kpi">KPI 리포트</a></small></h2>' +
+      (V.data_since ? '<div class="vc-row"><div><span class="l">지금 접속</span><b>' + (V.active || 0) + '</b><span class="u">명</span></div><div><span class="l">오늘 방문자</span><b>' + (t.uv || 0) + '</b><span class="u">명</span></div><div><span class="l">오늘 페이지뷰</span><b>' + (t.pv || 0) + '</b></div></div>' +
+        '<p class="muted-s">최근 7일 순방문자 ' + (w.uv || 0) + '명' + ch + ' · 방문 ' + (w.sessions || 0) + '회 · 페이지뷰 ' + (w.pv || 0) + '</p>'
+        : '<p class="muted-s">방문 집계를 시작했습니다. 홈페이지에 방문이 생기면 이곳과 KPI 리포트에 나타납니다.</p>') + '</div>';
+  }
   function dashboard() {
     setTitle('대시보드');
-    Promise.all([get('/api/admin/stats'), get('/api/admin/center')]).then(function (rs) {
-      var j = rs[0], C = rs[1].ok ? rs[1] : null;
+    Promise.all([get('/api/admin/stats'), get('/api/admin/center'), get('/api/admin/kpi?brief=1')]).then(function (rs) {
+      var j = rs[0], C = rs[1].ok ? rs[1] : null, V = rs[2];
       if (!j.ok) { view.innerHTML = '<p class="muted-s">' + errText(j) + '</p>'; return; }
       var I = j.inquiries, M = j.members, D = j.deliveries;
       var openRate = D.sent ? Math.round((D.opened || 0) / D.sent * 100) : 0;
@@ -160,6 +184,7 @@
             ((j.recent || []).map(function (r) { return '<li><span><a href="#/inquiry/' + r.id + '">#' + r.id + ' ' + esc(r.name) + '</a> · ' + esc(TYPE[r.type] || r.type) + ' · ' + esc(r.address) + '</span><span>' + stage(r.stage) + '</span></li>'; }).join('') || '<li class="muted-s">아직 문의가 없습니다.</li>') +
           '</ul></div>' +
         '</div><div>' +
+          visitCard(V) +
           (C ? '<div class="card"><h2>임대인센터 <small><a href="#/projects">프로젝트 ' + C.counts.active + '건 진행 중</a></small></h2>' + hb((C.by_stage || []).filter(function (r) { return r.n; }), function (k) { return (window.GBProject && GBProject.STAGE[k]) || k; }, true) + '</div>' : '') +
           '<div class="card"><h2>문의 진행 단계</h2>' + hb(stageRows, function (k) { return STAGE[k]; }) + '</div>' +
           '<div class="card"><h2>문의 유형</h2>' + hb(j.by_type || [], function (k) { return TYPE[k] || k || '미지정'; }, true) + '</div>' +

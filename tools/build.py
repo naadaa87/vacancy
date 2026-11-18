@@ -81,6 +81,17 @@ def render(page_id, template, out_name, extra=None):
     write(out_name, html)
     return page["path"]
 
+def page_names():
+    """KPI 리포트에서 쓰는 페이지 이름 (주소 → 이름)"""
+    names = {"/": "홈", "/solution": "공실개발 솔루션", "/models": "개발모델", "/cases": "개발사례", "/brands": "운영브랜드",
+             "/about": "회사소개", "/partners": "파트너", "/insights": "인사이트 목록", "/assessment": "공간 사전진단",
+             "/contact": "공간 검토 요청(문의)", "/privacy": "개인정보처리방침", "/terms": "이용약관", "/signup": "회원가입",
+             "/login": "로그인", "/forgot-password": "비밀번호 찾기", "/reset-password": "비밀번호 재설정", "/account": "마이페이지",
+             "/center": "임대인센터", "/documents/view": "받은 자료 보기", "/setup-check": "설정 점검"}
+    for a in D.INSIGHTS:
+        names["/insights/" + a["slug"]] = "인사이트: " + a["title"]
+    return json.dumps(names, ensure_ascii=False).replace("</", "<\\/")
+
 def main():
     OUT.mkdir(exist_ok=True)
     urls = []
@@ -93,10 +104,11 @@ def main():
     # 회원·관리 페이지 (검색 제외, 사이트맵 제외)
     for pid, tpl, out in [("signup", "signup.html", "signup.html"), ("login", "login.html", "login.html"),
                           ("forgot", "forgot.html", "forgot-password.html"), ("reset", "reset.html", "reset-password.html"),
-                          ("account", "account.html", "account.html"), ("admin", "admin.html", "admin.html"),
+                          ("account", "account.html", "account.html"),
                           ("setup", "setup.html", "setup-check.html"), ("docview", "docview.html", "documents/view.html"),
                           ("center", "center.html", "center.html")]:
         render(pid, tpl, out)
+    render("admin", "admin.html", "admin.html", {"page_names": page_names()})
     # 인사이트 개별 글
     for i, a in enumerate(D.INSIGHTS):
         page = {"path": "/insights/" + a["slug"], "title": a["title"] + " — 공백 인사이트", "desc": a["summary"]}

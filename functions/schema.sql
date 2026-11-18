@@ -3,6 +3,7 @@
 -- lib/server.js 의 db() 함수가 자동으로 만듭니다. 구조는 lib/server.js 의 SCHEMA 를 보세요.
 -- 임대인센터 테이블(landlords, partners, projects, project_members, project_posts, project_tasks, project_units,
 -- project_files, pfile_chunks, project_money, project_log, project_seen)은 lib/center.js 의 cdb() 가 자동으로 만듭니다.
+-- 방문 집계 테이블(an_pv: 페이지뷰·체류·스크롤·유입, an_ev: 클릭·목표 달성)은 lib/analytics.js 의 adb() 가 자동으로 만듭니다.
 --
 -- D1 콘솔에서 자주 쓰는 조회 예시
 SELECT id, created_at, name, phone, email, type, address, handled FROM inquiries ORDER BY id DESC LIMIT 50;
@@ -13,3 +14,7 @@ SELECT id, created_at, name, email, phone, role, email_verified FROM users ORDER
 -- 임대인센터 조회 예시
 SELECT id, code, title, stage, landlord_id, updated_at FROM projects ORDER BY updated_at DESC LIMIT 50;
 SELECT id, name, company, email, status, user_id FROM partners ORDER BY id DESC;
+
+-- 방문 집계 조회 예시 (날짜는 한국시간)
+SELECT day, COUNT(DISTINCT vid) visitors, COUNT(*) pageviews FROM an_pv GROUP BY day ORDER BY day DESC LIMIT 30;
+SELECT path, COUNT(*) pv FROM an_pv WHERE day >= date('now', '-30 days') GROUP BY path ORDER BY pv DESC LIMIT 20;

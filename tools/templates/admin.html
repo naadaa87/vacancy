@@ -42,6 +42,7 @@
     </a>
     <nav class="adm-nav" aria-label="관리 메뉴">
       <a href="#/" data-nav="dashboard">대시보드</a>
+      <a href="#/kpi" data-nav="kpi">KPI 리포트</a>
       <span class="adm-nav-h">홈페이지</span>
       <a href="#/inquiries" data-nav="inquiries">문의 관리 <span class="badge" id="nav-open" hidden>0</span></a>
       <a href="#/members" data-nav="members">회원 관리</a>
@@ -65,7 +66,9 @@
 </div>
 <div class="adm-toast" id="toast" role="status" aria-live="polite" hidden></div>
 
+<script>window.GB_PAGE_NAMES = {{ page_names|safe }};</script>
 <script src="/assets/js/project.js?v={{ build_id }}" defer></script>
+<script src="/assets/js/kpi.js?v={{ build_id }}" defer></script>
 <script src="/assets/js/admin.js?v={{ build_id }}" defer></script>
 </body>
 </html>

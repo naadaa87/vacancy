@@ -94,7 +94,7 @@
   wire(signup, function (d) {
     return api('/api/auth/signup', { email: d.email, password: d.password, name: d.name, phone: d.phone, role: d.role, company: d.company,
       agree_terms: d.agree_terms, agree_privacy: d.agree_privacy, marketing: d.marketing, website: d.website })
-      .then(function (j) { if (j.ok) location.href = (next || '/account') + (j.verification_sent ? (next ? '' : '?welcome=mail') : (next ? '' : '?welcome=1')); else fail(signup, j); });
+      .then(function (j) { if (j.ok) { try { if (window.gbTrack) window.gbTrack('goal', 'signup', d.role || ''); } catch (e) {} } if (j.ok) location.href = (next || '/account') + (j.verification_sent ? (next ? '' : '?welcome=mail') : (next ? '' : '?welcome=1')); else fail(signup, j); });
   });
 
   /* 로그인 */

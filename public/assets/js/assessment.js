@@ -7,7 +7,8 @@
   var prev = document.getElementById('a-prev');
   var next = document.getElementById('a-next');
   var err = document.getElementById('a-err');
-  var cur = 0;
+  var cur = 0, started = false;
+  function goal(k, l) { try { if (window.gbTrack) window.gbTrack('goal', k, l); } catch (e) {} } // 방문 통계 (진행 여부만, 답변 내용은 보내지 않음)
 
   function show(i) {
     cur = i;
@@ -18,7 +19,7 @@
     err.hidden = true;
     var top = form.getBoundingClientRect().top + window.scrollY - 96;
     if (i > 0) window.scrollTo({ top: top, behavior: 'smooth' });
-    if (i === steps.length - 1) render();
+    if (i === steps.length - 1) { render(); goal('assessment_done'); }
   }
 
   function valid(i) {
@@ -32,6 +33,7 @@
   next.addEventListener('click', function () {
     if (cur === steps.length - 1) { form.reset(); show(0); return; }
     if (!valid(cur)) { err.hidden = false; return; }
+    if (cur === 0 && !started) { started = true; goal('assessment_start'); }
     show(cur + 1);
   });
   prev.addEventListener('click', function () { if (cur > 0) show(cur - 1); });

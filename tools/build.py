@@ -127,7 +127,7 @@ def main():
         sm.append("  <url><loc>%s%s</loc><lastmod>%s</lastmod><priority>%s</priority></url>" % (D.SITE["domain"], u if u != "/" else "/", today, pr))
     sm.append("</urlset>")
     write("sitemap.xml", "\n".join(sm) + "\n")
-    write("robots.txt", "User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /account\nDisallow: /admin\nDisallow: /reset-password\nDisallow: /setup-check\nDisallow: /documents/\nDisallow: /center\n\nSitemap: %s/sitemap.xml\n" % D.SITE["domain"])
+    write("robots.txt", "User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /account\nDisallow: /admin\nDisallow: /reset-password\nDisallow: /setup-check\nDisallow: /documents/\nDisallow: /center\nDisallow: /cdn-cgi/\n\nSitemap: %s/sitemap.xml\n" % D.SITE["domain"])
 
     # Cloudflare Pages 설정 파일
     write("_headers", """/*

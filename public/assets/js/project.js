@@ -49,11 +49,15 @@
   }
   function errText(j) { return (j && (j.message || ERR[j.error])) || ERR.server_error; }
   function chip(text, cls) { return '<span class="pj-chip' + (cls ? ' ' + cls : '') + '">' + esc(text) + '</span>'; }
+  // 줄바꿈 유지 + 글 속의 주소를 링크로
+  function rich(s) { return nl(s).replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)\]])/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'); }
+  var QA = { waiting: '답변 대기', answered: '답변 완료', resolved: '해결' };
 
   /* ---------- 화면 ---------- */
   function mount(root, id, opt) {
     opt = opt || {};
-    var D = null, tab = opt.tab || 'overview', feedFilter = 'all', taskFilter = 'open';
+    var D = null, tab = opt.tab === 'log' ? 'history' : (opt.tab || 'overview'), feedFilter = 'all', taskFilter = 'open', feedQ = '', fileCat = '';
+    var W = window.GBWork;
     var toast = opt.toast || function (m) { alert(m); };
     var base = opt.base || '#/p/';
 
@@ -73,14 +77,31 @@
     var ro = function () { return !!V().preview; };
     var has = function (p) { return V().perms.indexOf(p) > -1; };
     var canTasks = function () { return !ro() && (isAdmin() || (isPartner() && has('tasks'))); };
+    // workspace.js(일정·확인 요청·기록 탭)에 넘겨주는 화면 문맥
+    var X = { id: id, root: root, D: function () { return D; }, V: V, isAdmin: isAdmin, isPartner: isPartner, isLandlord: isLandlord, ro: ro, has: has, api: api, req: req, load: load, toast: toast,
+      go: function (t) { go(t); }, esc: esc, nl: nl, rich: rich, chip: chip, opts: opts, dt: dt, day: day, today: today, ago: ago, won: won, size: size,
+      C: { STAGE: STAGE, STAGE_EXT: STAGE_EXT, KINDS: KINDS, ROLES: ROLES, TASK_ST: TASK_ST, FILE_CAT: FILE_CAT, MONEY_ST: MONEY_ST } };
 
     function tabs() {
       var t = D.tasks.filter(function (x) { return x.status !== 'done'; }).length;
       var pend = isAdmin() ? (D.stats.pending_posts || 0) : 0, pendF = isAdmin() ? (D.stats.pending_files || 0) : 0;
-      if (isLandlord()) return [['overview', '진행 현황'], ['feed', '소통'], ['files', '자료'], ['building', '건물 현황']];
-      var list = [['overview', '개요'], ['building', '건물·임대'], ['tasks', '추진사항', t], ['feed', '소통', pend, pend ? 'hot' : ''], ['files', '자료실', pendF, pendF ? 'hot' : '']];
-      if (isAdmin()) list.push(['people', '참여자·권한'], ['money', '정산'], ['log', '기록']);
-      if (isPartner()) list.push(['terms', '내 조건']);
+      var td = today();
+      var ev = (D.events || []).filter(function (e) { return e.status === 'plan' && (e.end_date || e.date) >= td; }).length;
+      var myAp = isAdmin() ? 0 : (D.approvals || []).filter(function (a) { return a.mine && a.status === 'pending'; }).length;
+      if (isLandlord()) {
+        var due = (D.bills || []).filter(function (b) { return b.status === 'due'; }).length;
+        var ll = [['overview', '진행 현황', myAp, myAp ? 'hot' : ''], ['feed', '소통'], ['schedule', '일정', ev], ['files', '자료']];
+        if ((D.bills || []).length) ll.push(['bills', '비용·정산', due, due ? 'hot' : '']);
+        ll.push(['building', '건물 현황'], ['history', '기록']);
+        return ll;
+      }
+      var wait = isAdmin() ? (D.stats.waiting || 0) : 0, apw = isAdmin() ? (D.stats.approvals_wait || 0) : 0, claims = isAdmin() ? (D.stats.claims || 0) : 0;
+      var list = [['overview', '개요', myAp, myAp ? 'hot' : ''], ['building', '건물·임대'], ['tasks', '추진사항', t], ['feed', '소통', pend + wait, pend + wait ? 'hot' : ''], ['schedule', '일정', ev]];
+      if (isAdmin()) list.push(['approvals', '확인 요청', apw]);
+      list.push(['files', '자료실', pendF, pendF ? 'hot' : '']);
+      if (isAdmin()) list.push(['people', '참여자·권한'], ['money', '정산', claims, claims ? 'hot' : '']);
+      if (isPartner()) list.push(['terms', '정산·조건']);
+      list.push(['history', '기록']);
       return list;
     }
 
@@ -123,14 +144,15 @@
       var stp = $('.pj-steps', root), cur = $('.pj-steps li.on', root); if (stp && cur && stp.scrollWidth > stp.clientWidth) { var prev = cur.previousElementSibling || cur; stp.scrollLeft = Math.max(0, prev.offsetLeft - stp.offsetLeft); }
       var as = $('#pj-as'); if (as) as.onchange = function () { if (as.value) location.hash = base + id + '?as=' + encodeURIComponent(as.value); };
       var body = $('#pj-body');
-      ({ overview: overview, building: building, tasks: tasksTab, feed: feed, files: files, people: people, money: money, log: logTab, terms: terms }[tab])(body);
+      var own = { overview: overview, building: building, tasks: tasksTab, feed: feed, files: files, people: people, money: money, terms: terms };
+      if (own[tab]) own[tab](body); else if (W && W.tabs[tab]) W.tabs[tab](body, X); else overview(body);
     }
     function setHash() { var h = base + id + (tab !== 'overview' ? '?tab=' + tab : ''); if (opt.as) h = base + id + '?as=' + encodeURIComponent(opt.as) + (tab !== 'overview' ? '&tab=' + tab : ''); history.replaceState(null, '', h); }
     function go(t) { tab = t; setHash(); render(); window.scrollTo(0, 0); }
 
     /* ---------- 개요 ---------- */
     function postLine(p) {
-      return '<li><div class="pl-top"><b>' + esc(p.author) + '</b>' + chip(POST_KIND[p.kind] || '', 'kind') + (!isLandlord() ? chip(AUD[p.audience], 'aud-' + p.audience) : '') + (p.status === 'pending' ? chip('승인 대기', 'hot') : '') + '<span class="pl-t">' + ago(p.created_at) + '</span></div><p>' + esc(String(p.body).slice(0, 140)) + (String(p.body).length > 140 ? '…' : '') + '</p></li>';
+      return '<li><div class="pl-top"><b>' + esc(p.author) + '</b>' + chip(POST_KIND[p.kind] || '', 'kind') + (!isLandlord() ? chip(AUD[p.audience], 'aud-' + p.audience) : '') + (p.status === 'pending' ? chip('승인 대기', 'hot') : '') + (p.qa ? chip(QA[p.qa], 'qa-' + p.qa) : '') + '<span class="pl-t">' + ago(p.created_at) + '</span></div><p>' + esc(String(p.body).slice(0, 140)) + (String(p.body).length > 140 ? '…' : '') + '</p></li>';
     }
     function taskLine(t) {
       var late = t.status !== 'done' && t.due_date && t.due_date < today();
@@ -141,12 +163,15 @@
       var open = D.tasks.filter(function (t) { return t.status !== 'done'; }).sort(function (a, b) { return (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1; });
       var tops = D.posts.filter(function (p) { return !p.parent_id; }).slice(0, 4);
       var activeMembers = D.members.filter(function (m) { return m.status === undefined || m.status === 'active'; });
+      var top = W ? W.overviewTop(X) : '';
       if (isLandlord()) {
         var mine = D.tasks.filter(function (t) { return t.owner === 'l' && t.status !== 'done'; });
         var work = D.tasks.filter(function (t) { return t.owner !== 'l'; });
-        el.innerHTML = '<div class="grid2"><div>' +
+        var GS = window.GB_SITE || {};
+        el.innerHTML = top + '<div class="grid2"><div>' +
           '<div class="card pj-stage-card"><h2>지금 단계 <small>' + esc(STAGE_EXT[P.stage]) + '</small></h2><p>' + esc(STAGE_NOTE[P.stage] || '') + '</p>' +
-            '<div class="pj-progress"><i style="width:' + pct + '%"></i></div><p class="muted-s">진행 항목 ' + S.tasks_done + ' / ' + S.tasks_total + ' 완료</p></div>' +
+            '<div class="pj-progress"><i style="width:' + pct + '%"></i></div><p class="muted-s">진행 항목 ' + S.tasks_done + ' / ' + S.tasks_total + ' 완료</p>' +
+            '<details class="pj-stage-guide"><summary>전체 진행 순서 보기</summary><ol>' + PSTAGES.slice(0, 7).map(function (s) { return '<li class="' + (s[0] === P.stage ? 'on' : '') + '"><b>' + esc(s[2]) + '</b><span>' + esc(STAGE_NOTE[s[0]]) + '</span></li>'; }).join('') + '</ol></details></div>' +
           (mine.length ? '<div class="card pj-ask"><h2>요청드린 자료 <small>' + mine.length + '건</small></h2><ul class="pj-asklist">' + mine.map(function (t) {
             return '<li><div><b>' + esc(t.title) + '</b>' + (t.detail ? '<p>' + esc(t.detail) + '</p>' : '') + (t.due_date ? '<p class="muted-s">기한 ' + esc(t.due_date) + '</p>' : '') + '</div>' +
               (ro() ? '' : '<label class="btn btn-primary btn-sm pj-upbtn">파일 올리기<input type="file" data-task="' + t.id + '" hidden></label>') + '</li>';
@@ -156,10 +181,11 @@
           '<div class="card"><h2>최근 소식 <small><a href="#" data-go="feed">전체 보기</a></small></h2>' + (tops.length ? '<ul class="pj-postlist">' + tops.map(postLine).join('') + '</ul>' : '<p class="muted-s">아직 소식이 없습니다. 궁금하신 점은 소통 탭에 남겨 주세요.</p>') + '</div>' +
           '<div class="card"><h2>의뢰 내용</h2><dl class="dl"><dt>건물</dt><dd>' + esc(P.address || '-') + '</dd>' + (P.request ? '<dt>요청 사항</dt><dd>' + nl(P.request) + '</dd>' : '') + (P.goal ? '<dt>목표</dt><dd>' + nl(P.goal) + '</dd>' : '') + '</dl></div>' +
           '<div class="card"><h2>함께하는 팀</h2><p class="muted-s" style="margin-bottom:10px">공백이 프로젝트 전체를 맡아 관리하고, 분야별 파트너가 함께 진행합니다. 모든 소통은 공백을 통해 이루어집니다.</p><ul class="pj-team"><li><b>공백</b><span>총괄·관리</span></li>' +
-            activeMembers.map(function (m) { return '<li><b>' + esc(m.alias) + '</b><span>' + esc(ROLES[m.role] || '') + '</span></li>'; }).join('') + '</ul></div>' +
+            activeMembers.map(function (m) { return '<li><b>' + esc(m.alias) + '</b><span>' + esc(ROLES[m.role] || '') + '</span></li>'; }).join('') + '</ul>' +
+            (GS.phone || GS.email ? '<p class="pj-contact">급한 일은 공백으로 바로 연락 주세요. ' + (GS.phone ? '<a href="tel:' + esc(String(GS.phone).replace(/[^0-9+]/g, '')) + '">' + esc(GS.phone) + '</a>' : '') + (GS.phone && GS.email ? ' · ' : '') + (GS.email ? '<a href="mailto:' + esc(GS.email) + '">' + esc(GS.email) + '</a>' : '') + '</p>' : '') + '</div>' +
         '</div></div>';
       } else {
-        el.innerHTML = '<div class="grid2"><div>' +
+        el.innerHTML = top + '<div class="grid2"><div>' +
           (isAdmin() && (S.pending_posts || S.pending_files || S.overdue) ? '<div class="card pj-alert"><h2>확인할 일</h2><ul class="todo">' +
             (S.pending_posts ? '<li><span class="dot red"></span><div><a href="#" data-go="feed" data-filter="pending">임대인 공개 승인 대기 글 ' + S.pending_posts + '건</a><p>파트너가 임대인에게 공유를 요청한 글입니다. 회사명·연락처가 들어 있지 않은지 확인하고 승인해 주세요.</p></div></li>' : '') +
             (S.pending_files ? '<li><span class="dot red"></span><div><a href="#" data-go="files">확인이 필요한 자료 ' + S.pending_files + '건</a><p>임대인이 올린 자료이거나 임대인 공개를 요청한 자료입니다. 공유 범위를 정해 주세요.</p></div></li>' : '') +
@@ -182,6 +208,7 @@
       }
       $$('[data-go]', el).forEach(function (a) { a.onclick = function (e) { e.preventDefault(); if (a.dataset.filter) feedFilter = a.dataset.filter; if (a.dataset.tfilter) taskFilter = a.dataset.tfilter; go(a.dataset.go); }; });
       $$('input[type=file][data-task]', el).forEach(function (inp) { inp.onchange = function () { if (inp.files[0]) uploadFile(inp.files[0], { task_id: inp.dataset.task, category: 'etc' }); }; });
+      if (W) W.wireTop(el, X);
     }
 
     /* ---------- 건물·임대 ---------- */
@@ -288,11 +315,13 @@
           var att = D.files.filter(function (f) { return f.task_id === t.id; });
           return '<li class="' + (t.status === 'done' ? 'is-done' : '') + (late ? ' is-late' : '') + '" data-id="' + t.id + '">' +
             '<div class="tk-main">' + (editable ? '<select class="tk-sel st-' + t.status + '" data-tst="' + t.id + '">' + opts(TASK_ST, t.status) + '</select>' : '<span class="tk-st st-' + t.status + '">' + TASK_ST[t.status] + '</span>') +
-            '<div class="tk-body"><b>' + (t.kind === 'doc' ? chip('자료 요청', 'doc') : '') + esc(t.title) + '</b>' + (t.detail ? '<p>' + esc(t.detail) + '</p>' : '') +
+            '<div class="tk-body"><b>' + (t.kind === 'doc' ? chip('자료 요청', 'doc') : '') + esc(t.title) + '</b>' + (t.detail ? '<p>' + esc(t.detail) + '</p>' : '') + (t.note ? '<p class="tk-note"><span>메모</span> ' + nl(t.note) + '</p>' : '') +
             (att.length ? '<p class="tk-files">' + att.map(function (f) { return '<a href="/api/center/files?id=' + f.id + '">' + esc(f.name) + '</a>'; }).join(' · ') + '</p>' : '') + '</div>' +
             '<div class="tk-side"><span class="tk-o">' + esc(t.owner_label) + '</span><span class="tk-d' + (late ? ' late' : '') + '">' + esc(t.due_date || '기한 없음') + '</span>' +
             (!isLandlord() && t.visibility ? chip({ internal: '공백 내부', team: '참여자', all: '임대인 공개' }[t.visibility], 'aud-' + t.visibility) : '') + '</div></div>' +
-            (canTasks() || (t.mine && t.kind === 'doc' && !ro()) ? '<div class="tk-acts">' + (t.mine && t.kind === 'doc' && t.status !== 'done' && !ro() ? '<label class="pj-link">파일 올리기<input type="file" data-task="' + t.id + '" hidden></label>' : '') +
+            (editable ? '<div class="tk-acts">' + (t.mine && t.kind === 'doc' && t.status !== 'done' ? '<label class="pj-link">파일 올리기<input type="file" data-task="' + t.id + '" hidden></label>' : '') +
+              '<button type="button" class="pj-link" data-tnote="' + t.id + '">' + (t.note ? '메모 고치기' : '진행 메모') + '</button>' +
+              (isAdmin() && t.owner !== 'gb' && t.status !== 'done' ? '<button type="button" class="pj-link" data-tnudge="' + t.id + '">확인 부탁 알림</button>' : '') +
               (canTasks() ? '<button type="button" class="pj-link" data-tedit="' + t.id + '">수정</button><button type="button" class="pj-link danger" data-tdel="' + t.id + '">삭제</button>' : '') + '</div>' : '') +
             '</li>';
         }).join('') + '</ul></div>';
@@ -303,6 +332,16 @@
       $$('[data-tst]', el).forEach(function (s) { s.onchange = function () { api('/api/center/tasks', { project_id: id, action: 'update', id: +s.dataset.tst, status: s.value }).then(function (j) { if (j.ok) load(true); }); }; });
       $$('input[type=file][data-task]', el).forEach(function (inp) { inp.onchange = function () { if (inp.files[0]) uploadFile(inp.files[0], { task_id: inp.dataset.task }); }; });
       $$('[data-tdel]', el).forEach(function (b) { b.onclick = function () { if (confirm('이 추진사항을 삭제할까요?')) api('/api/center/tasks', { project_id: id, action: 'delete', id: +b.dataset.tdel }).then(function (j) { if (j.ok) load(true); }); }; });
+      $$('[data-tnudge]', el).forEach(function (b) { b.onclick = function () { if (confirm('담당자에게 확인을 부탁하는 알림(메일 포함)을 보낼까요?')) api('/api/center/tasks', { project_id: id, action: 'nudge', id: +b.dataset.tnudge }).then(function (j) { if (j.ok) toast('담당자에게 알렸습니다.'); }); }; });
+      $$('[data-tnote]', el).forEach(function (b) { b.onclick = function () {
+        var t = D.tasks.filter(function (x) { return x.id === +b.dataset.tnote; })[0], li = b.closest('li');
+        if ($('.tk-noteform', li)) return;
+        var f = document.createElement('form'); f.className = 'tk-noteform';
+        f.innerHTML = '<textarea name="note" rows="2" maxlength="1000" placeholder="진행 상황이나 완료 결과를 한두 줄로 남겨 주세요.">' + esc(t.note || '') + '</textarea><div class="pj-form-foot"><span class="muted-s">' + (isAdmin() ? '' : '메모를 남기면 공백에 알려집니다.') + '</span><span><button type="button" class="btn btn-outline btn-sm" data-x>닫기</button> <button class="btn btn-ink btn-sm">메모 저장</button></span></div>';
+        li.appendChild(f); f.note.focus();
+        $('[data-x]', f).onclick = function () { f.remove(); };
+        f.onsubmit = function (e) { e.preventDefault(); api('/api/center/tasks', { project_id: id, action: 'update', id: t.id, note: f.note.value }).then(function (j) { if (j.ok) { toast('메모를 저장했습니다.'); load(true); } }); };
+      }; });
       $$('[data-tedit]', el).forEach(function (b) { b.onclick = function () {
         var t = D.tasks.filter(function (x) { return x.id === +b.dataset.tedit; })[0], li = b.closest('li');
         if ($('.tk-edit', li)) return;
@@ -339,10 +378,17 @@
     function feed(el) {
       var tops = D.posts.filter(function (p) { return !p.parent_id; });
       var replies = function (pid) { return D.posts.filter(function (p) { return p.parent_id === pid; }).sort(function (a, b) { return a.created_at < b.created_at ? -1 : 1; }); };
-      var F = isAdmin() ? { all: '전체', pending: '승인 대기', landlord: '임대인 공유', direct: '1:1', internal: '내부 메모' } : null;
+      var F = isAdmin() ? { all: '전체', waiting: '답변 대기', pending: '승인 대기', landlord: '임대인 공유', direct: '1:1', internal: '내부 메모' } : { all: '전체', mine: '내가 쓴 글', notice: '공지·보고' };
       var pendIds = {}; D.posts.forEach(function (p) { if (p.status === 'pending') pendIds[p.parent_id || p.id] = 1; });
+      var waitN = tops.filter(function (p) { return p.qa === 'waiting'; }).length;
+      var ql = feedQ.toLowerCase();
+      tops = tops.slice().sort(function (a, b) { return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0); });
       var shown = tops.filter(function (p) {
-        if (!F || feedFilter === 'all') return true;
+        if (ql && (p.body + ' ' + p.author + ' ' + replies(p.id).map(function (r) { return r.body; }).join(' ')).toLowerCase().indexOf(ql) < 0) return false;
+        if (feedFilter === 'all') return true;
+        if (feedFilter === 'waiting') return p.qa === 'waiting';
+        if (feedFilter === 'mine') return p.own;
+        if (feedFilter === 'notice') return p.pinned || p.kind === 'report' || p.kind === 'decision';
         if (feedFilter === 'pending') return pendIds[p.id];
         if (feedFilter === 'landlord') return p.audience === 'all';
         return p.audience === feedFilter;
@@ -353,14 +399,19 @@
           (isAdmin() ? '<div class="pj-row" id="c-direct" hidden><select name="direct_to"><option value="">받는 사람</option>' + D.members.filter(function (m) { return m.status === 'active'; }).map(function (m) { return '<option value="m:' + m.id + '">' + esc(m.alias + ' · ' + m.name) + '</option>'; }).join('') + (D.landlord ? '<option value="l">임대인 ' + esc(D.landlord.name) + '</option>' : '') + '</select></div>' : '') +
           '<div class="pj-row"><select name="kind">' + (isLandlord() ? opts({ request: '문의·요청', opinion: '의견' }, 'request') : opts({ opinion: '의견·검토', report: '진행 보고', request: '요청·질문', decision: '결정 사항' }, 'opinion')) + '</select></div>' +
           '<textarea name="body" rows="4" required placeholder="' + (isLandlord() ? '궁금하신 점이나 요청하실 내용을 남겨 주세요. 공백이 확인하고 답변드립니다.' : '검토 의견, 진행 상황, 요청 사항을 남겨 주세요.') + '"></textarea>' +
+          '<div class="pj-attach"><label class="pj-link">파일 첨부<input type="file" name="files" multiple hidden></label><span class="muted-s" id="c-files">사진·문서 5개까지, 파일당 10MB</span>' + (isAdmin() ? '<button type="button" class="pj-link" id="c-draft">주간 보고 초안 넣기</button>' : '') + '</div>' +
           '<p class="muted-s pj-hint" id="c-hint"></p>' +
           '<div class="pj-form-foot">' + (isAdmin() ? '<label class="pj-mini"><input type="checkbox" name="notify"> 받는 사람에게 메일로 알리기</label>' : '<span class="muted-s">' + (isLandlord() ? '남기신 글은 공백에 바로 전달됩니다.' : '글은 공백에 바로 알려집니다.') + '</span>') + '<button class="btn btn-ink btn-sm">올리기</button></div></form>';
       }
-      if (F) html += '<div class="pills" id="f-pills">' + Object.keys(F).map(function (k) { var n = k === 'pending' ? Object.keys(pendIds).length : 0; return '<button type="button" data-f="' + k + '" aria-pressed="' + (k === feedFilter) + '">' + F[k] + (n ? '<span class="c">' + n + '</span>' : '') + '</button>'; }).join('') + '</div>';
+      if (!F[feedFilter]) feedFilter = 'all';
+      html += '<div class="pj-bar"><div class="pills" id="f-pills">' + Object.keys(F).map(function (k) { var n = k === 'pending' ? Object.keys(pendIds).length : k === 'waiting' ? waitN : 0; return '<button type="button" data-f="' + k + '" aria-pressed="' + (k === feedFilter) + '">' + F[k] + (n ? '<span class="c">' + n + '</span>' : '') + '</button>'; }).join('') + '</div>' +
+        '<input type="search" id="f-q" class="pj-search" placeholder="글 검색" value="' + esc(feedQ) + '" aria-label="글 검색"></div>';
       html += shown.length ? '<ul class="pj-feed">' + shown.map(function (p) { return '<li>' + postCard(p) + '<ul class="pj-replies">' + replies(p.id).map(function (r) { return '<li>' + postCard(r) + '</li>'; }).join('') + '</ul>' +
         (!ro() && (p.audience !== 'internal' || isAdmin()) ? '<details class="pj-reply"><summary>답글</summary><form data-reply="' + p.id + '"><textarea name="body" rows="2" required></textarea><div class="pj-form-foot"><span class="muted-s">' + (isPartner() && p.audience === 'all' && !has('publish') ? '임대인 공유 글의 답글은 공백 확인 후 공개됩니다.' : '') + '</span>' + (isAdmin() && p.audience !== 'internal' ? '<label class="pj-mini"><input type="checkbox" name="notify"> 메일 알림</label>' : '') + '<button class="btn btn-outline btn-sm">답글 올리기</button></div></form></details>' : '') + '</li>'; }).join('') + '</ul>'
-        : '<div class="pj-empty">' + (feedFilter === 'pending' ? '승인 대기 글이 없습니다.' : '아직 글이 없습니다.') + '</div>';
+        : '<div class="pj-empty">' + (feedQ ? '검색 결과가 없습니다.' : feedFilter === 'pending' ? '승인 대기 글이 없습니다.' : feedFilter === 'waiting' ? '답변을 기다리는 글이 없습니다.' : '아직 글이 없습니다.') + '</div>';
       el.innerHTML = html;
+      var fq = $('#f-q', el);
+      if (fq) fq.oninput = function () { feedQ = fq.value.trim(); clearTimeout(feed._t); feed._t = setTimeout(function () { feed(el); var n = $('#f-q', el); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 250); };
 
       var cf = $('#c-form', el);
       if (cf) {
@@ -378,16 +429,33 @@
         cf.onsubmit = function (e) {
           e.preventDefault(); var a = cf.querySelector('input[name=audience]:checked').value;
           if (isAdmin() && a === 'direct' && !cf.direct_to.value) { toast('받는 사람을 선택해 주세요.', true); return; }
+          var picked = Array.prototype.slice.call(cf.files.files || []);
+          if (picked.length > 5) { toast('파일은 5개까지 첨부할 수 있습니다.', true); return; }
+          if (picked.some(function (x) { return x.size > 10 * 1048576; })) { toast('파일은 10MB 이하만 첨부할 수 있습니다.', true); return; }
           var btn = $('button.btn', cf); btn.disabled = true;
           api('/api/center/posts', { project_id: id, action: 'create', audience: a, direct_to: cf.direct_to ? cf.direct_to.value : '', kind: cf.kind.value, body: cf.body.value, notify: cf.notify ? cf.notify.checked : false }).then(function (j) {
-            btn.disabled = false;
-            if (j.ok) { toast(j.status === 'pending' ? '올렸습니다. 공백 확인 후 임대인에게 공개됩니다.' : '올렸습니다.' + (j.mailed ? ' 메일 ' + j.mailed + '통 발송' : '')); load(true); }
+            if (!j.ok) { btn.disabled = false; return; }
+            var msg = j.status === 'pending' ? '올렸습니다. 공백 확인 후 임대인에게 공개됩니다.' : '올렸습니다.' + (isAdmin() && j.mailed ? ' 메일 ' + j.mailed + '통 발송' : isAdmin() ? '' : ' 공백에 바로 전달됩니다.');
+            // 첨부 파일은 글이 만들어진 뒤 하나씩 올립니다
+            var failed = 0, i = 0;
+            (function next() {
+              if (i >= picked.length) { btn.disabled = false; toast(failed ? msg + ' 첨부 ' + failed + '개는 올리지 못했습니다.' : msg, !!failed); load(true); return; }
+              toast('첨부 파일 올리는 중… (' + (i + 1) + '/' + picked.length + ')');
+              var fd = new FormData(); fd.append('project_id', id); fd.append('post_id', j.id); fd.append('file', picked[i++]);
+              req('POST', '/api/center/files', fd, true).then(function (k) { if (!k.ok) failed++; next(); });
+            })();
           });
         };
+        cf.files.onchange = function () { var n = cf.files.files.length; $('#c-files', el).textContent = n ? Array.prototype.map.call(cf.files.files, function (x) { return x.name; }).join(', ') : '사진·문서 5개까지, 파일당 10MB'; };
+        var dr = $('#c-draft', el); if (dr) dr.onclick = function () { if (cf.body.value.trim() && !confirm('쓰던 내용을 지우고 초안으로 바꿀까요?')) return; cf.body.value = reportDraft(); cf.kind.value = 'report'; cf.body.focus(); };
       }
       $$('#f-pills button', el).forEach(function (b) { b.onclick = function () { feedFilter = b.dataset.f; feed(el); }; });
       $$('form[data-reply]', el).forEach(function (f) { f.onsubmit = function (e) { e.preventDefault(); api('/api/center/posts', { project_id: id, action: 'create', parent_id: +f.dataset.reply, body: f.body.value, notify: f.notify ? f.notify.checked : false }).then(function (j) { if (j.ok) { toast(j.status === 'pending' ? '답글을 올렸습니다. 공백 확인 후 임대인에게 공개됩니다.' : '답글을 올렸습니다.'); load(true); } }); }; });
-      $$('[data-pdel]', el).forEach(function (b) { b.onclick = function () { if (confirm('이 글을 삭제할까요? 답글도 함께 지워집니다.')) api('/api/center/posts', { project_id: id, action: 'delete', id: +b.dataset.pdel }).then(function (j) { if (j.ok) load(true); }); }; });
+      $$('[data-pdel]', el).forEach(function (b) { b.onclick = function () { if (confirm('이 글을 삭제할까요? 답글과 첨부 파일도 함께 지워집니다.')) api('/api/center/posts', { project_id: id, action: 'delete', id: +b.dataset.pdel }).then(function (j) { if (j.ok) load(true); }); }; });
+      $$('[data-ppin]', el).forEach(function (b) { b.onclick = function () { api('/api/center/posts', { project_id: id, action: 'pin', id: +b.dataset.ppin, pinned: b.dataset.on === '1' }).then(function (j) { if (j.ok) { toast(b.dataset.on === '1' ? '공지로 고정했습니다. 개요 화면 맨 위에도 보입니다.' : '고정을 풀었습니다.'); load(true); } }); }; });
+      $$('[data-pres]', el).forEach(function (b) { b.onclick = function () { api('/api/center/posts', { project_id: id, action: 'resolve', id: +b.dataset.pres, resolved: b.dataset.off !== '1' }).then(function (j) { if (j.ok) load(true); }); }; });
+      $$('[data-pack]', el).forEach(function (b) { b.onclick = function () { api('/api/center/feedback', { project_id: id, action: 'ack', post_id: +b.dataset.pack }).then(function (j) { if (j.ok) { if (j.acked) toast('확인했다고 알렸습니다.'); load(true); } }); }; });
+      $$('[data-fok]', el).forEach(function (b) { b.onclick = function () { api('/api/center/files', { project_id: id, action: 'update', id: +b.dataset.fok }).then(function (j) { if (j.ok) { toast('첨부 파일을 확인했습니다. 글을 볼 수 있는 분들에게 공개됩니다.'); load(true); } }); }; });
       $$('[data-prej]', el).forEach(function (b) { b.onclick = function () { if (confirm('임대인에게 공개하지 않고, 참여자 공유 글로 남길까요?')) api('/api/center/posts', { project_id: id, action: 'reject', id: +b.dataset.prej }).then(function (j) { if (j.ok) { toast('참여자 공유로 남겼습니다.'); load(true); } }); }; });
       $$('[data-papp]', el).forEach(function (b) { b.onclick = function () {
         var p = D.posts.filter(function (x) { return x.id === +b.dataset.papp; })[0], box = b.closest('.pj-post');
@@ -404,12 +472,37 @@
       var acts = '';
       if (isAdmin() && !ro() && p.status === 'pending') acts += '<button type="button" class="btn btn-primary btn-sm" data-papp="' + p.id + '">검토 후 공개</button><button type="button" class="pj-link" data-prej="' + p.id + '">임대인 비공개</button>';
       else if (isAdmin() && !ro() && p.author_type !== 'admin' && p.author_type !== 'landlord' && p.audience === 'team' && !p.parent_id) acts += '<button type="button" class="pj-link" data-papp="' + p.id + '">임대인에게도 공유</button>';
+      if (!ro() && !p.parent_id) {
+        if (isAdmin()) acts += '<button type="button" class="pj-link" data-ppin="' + p.id + '" data-on="' + (p.pinned ? 0 : 1) + '">' + (p.pinned ? '고정 해제' : '공지로 고정') + '</button>';
+        if (p.qa && (isAdmin() || p.own)) acts += p.qa === 'resolved' ? '<button type="button" class="pj-link" data-pres="' + p.id + '" data-off="1">다시 열기</button>' : '<button type="button" class="pj-link" data-pres="' + p.id + '">해결됨으로 표시</button>';
+      }
+      if (!ro() && !isAdmin() && !p.own) acts += '<button type="button" class="pj-ack' + (p.acked ? ' on' : '') + '" data-pack="' + p.id + '" aria-pressed="' + !!p.acked + '">' + (p.acked ? '✓ 확인했습니다' : '확인했습니다') + '</button>';
       if (canDel) acts += '<button type="button" class="pj-link danger" data-pdel="' + p.id + '">삭제</button>';
-      var cls = 'pj-post' + (p.own ? ' own' : '') + (p.status === 'pending' ? ' pending' : '') + (p.author_type === 'admin' || (isLandlord() && p.author === '공백') ? ' gb' : '');
-      return '<article class="' + cls + '"><header><b>' + esc(p.author) + '</b>' + (p.kind && p.kind !== 'reply' ? chip(POST_KIND[p.kind], 'kind') : '') +
+      var att = p.files ? '<ul class="pj-att">' + p.files.map(function (f) {
+        var img = /^image\//.test(f.mime || '');
+        return '<li><a href="/api/center/files?id=' + f.id + (img || f.mime === 'application/pdf' ? '&inline=1" target="_blank" rel="noopener' : '') + '">' + esc(f.name) + '</a><span>' + size(f.size) + '</span>' +
+          (f.pending ? chip(isAdmin() ? '확인 전' : '공백 확인 중', 'warn') + (isAdmin() && !ro() ? '<button type="button" class="pj-link" data-fok="' + f.id + '">확인·공개</button>' : '') : '') + '</li>';
+      }).join('') + '</ul>' : '';
+      var ackLine = p.acks ? '<p class="pj-acks">확인함: ' + p.acks.map(function (a) { return esc(a.who) + ' <time>' + dt(a.at).slice(5) + '</time>'; }).join(' · ') + '</p>' : '';
+      var cls = 'pj-post' + (p.own ? ' own' : '') + (p.status === 'pending' ? ' pending' : '') + (p.pinned ? ' pinned' : '') + (p.author_type === 'admin' || (isLandlord() && p.author === '공백') ? ' gb' : '');
+      return '<article class="' + cls + '"><header><b>' + esc(p.author) + '</b>' + (p.pinned ? chip('공지', 'hot') : '') + (p.kind && p.kind !== 'reply' ? chip(POST_KIND[p.kind], 'kind') : '') + (p.qa ? chip(QA[p.qa], 'qa-' + p.qa) : '') +
         (!isLandlord() ? chip(p.audience === 'direct' ? (p.direct_label || '1:1') : AUD[p.audience], 'aud-' + p.audience) : (p.audience === 'direct' ? chip('공백과 1:1', 'aud-direct') : '')) +
-        (p.status === 'pending' ? chip(isAdmin() ? '임대인 공개 승인 대기' : '공백 확인 중', 'hot') : '') + '<time title="' + dt(p.created_at) + '">' + ago(p.created_at) + '</time></header><div class="pj-post-body">' + nl(p.body) + '</div>' +
+        (p.status === 'pending' ? chip(isAdmin() ? '임대인 공개 승인 대기' : '공백 확인 중', 'hot') : '') + '<time title="' + dt(p.created_at) + '">' + ago(p.created_at) + '</time></header><div class="pj-post-body">' + rich(p.body) + '</div>' + att + ackLine +
         (acts ? '<footer>' + acts + '</footer>' : '') + '</article>';
+    }
+    // 관리자용 주간 보고 초안: 지난 7일에 끝낸 일, 진행 중인 일, 앞으로 7일의 계획, 임대인에게 확인받을 일
+    function reportDraft() {
+      var td = today(), wk = W ? W.addDays(td, -7) : td, nx = W ? W.addDays(td, 7) : td, md = function (d) { return +d.slice(5, 7) + '/' + +d.slice(8, 10); };
+      var done = D.tasks.filter(function (t) { return t.status === 'done' && t.done_at && day(t.done_at) >= wk; }).map(function (t) { return '- ' + t.title; });
+      (D.events || []).forEach(function (e) { if (e.status === 'done' && e.date >= wk) done.push('- ' + md(e.date) + ' ' + e.title + (e.result ? ': ' + String(e.result).split('\n')[0] : '')); });
+      var doing = D.tasks.filter(function (t) { return t.status === 'doing' || t.status === 'blocked'; }).map(function (t) { return '- ' + t.title + (t.status === 'blocked' ? ' (이슈)' : '') + (t.note ? ': ' + t.note : ''); });
+      var plan = D.tasks.filter(function (t) { return t.status !== 'done' && t.due_date && t.due_date >= td && t.due_date <= nx; }).map(function (t) { return '- ' + md(t.due_date) + ' ' + t.title; });
+      (D.events || []).forEach(function (e) { if (e.status === 'plan' && e.date >= td && e.date <= nx) plan.push('- ' + md(e.date) + (e.time ? ' ' + e.time : '') + ' ' + e.title); });
+      var ask = D.tasks.filter(function (t) { return t.owner === 'l' && t.status !== 'done'; }).map(function (t) { return '- ' + (t.kind === 'doc' ? '자료 요청: ' : '') + t.title + (t.due_date ? ' (' + md(t.due_date) + '까지)' : ''); });
+      (D.approvals || []).forEach(function (a) { if (a.status === 'pending' && a.target === 'l') ask.push('- 확인 요청: ' + a.title + (a.due_date ? ' (' + md(a.due_date) + '까지)' : '')); });
+      var none = ['- (해당 없음)'];
+      return '[주간 진행 보고] ' + md(wk) + ' ~ ' + md(td) + '\n\n■ 이번 주에 진행한 일\n' + (done.length ? done : none).join('\n') + '\n\n■ 진행 중인 일\n' + (doing.length ? doing : none).join('\n') +
+        '\n\n■ 다음 주 계획\n' + (plan.length ? plan : none).join('\n') + '\n\n■ 확인·요청드릴 사항\n' + (ask.length ? ask : none).join('\n');
     }
 
     /* ---------- 자료실 ---------- */
@@ -437,16 +530,22 @@
       var pend = isAdmin() ? FL.filter(function (f) { return f.status === 'pending'; }) : [];
       if (pend.length) {
         html += '<div class="card pj-alert"><h2>확인이 필요한 자료 <small>' + pend.length + '건</small></h2><ul class="pj-pend">' + pend.map(function (f) {
+          if (f.post_id) return '<li><div><a href="/api/center/files?id=' + f.id + '"><b>' + esc(f.name) + '</b></a><p class="muted-s">' + esc(f.by) + ' · ' + dt(f.created_at) + ' · ' + size(f.size) + ' · 소통 글 첨부</p><p class="muted-s">글에 첨부된 파일입니다. 확인하면 그 글을 볼 수 있는 분들에게 공개됩니다. 파일 안에 회사명·연락처가 없는지 확인해 주세요.</p></div>' +
+            '<div class="pj-pend-acts"><button type="button" class="btn btn-primary btn-sm" data-fok2="' + f.id + '">확인·공개</button></div></li>';
           return '<li><div><a href="/api/center/files?id=' + f.id + '"><b>' + esc(f.name) + '</b></a><p class="muted-s">' + esc(f.by) + ' · ' + dt(f.created_at) + ' · ' + size(f.size) + (f.note ? ' · ' + esc(f.note) : '') + '</p><p class="muted-s">' + (f.audience === 'all' ? '임대인 공개를 요청했습니다. 파일 안에 회사명·연락처가 없는지 확인해 주세요.' : '임대인이 보낸 자료입니다. 누구와 공유할지 정해 주세요.') + '</p></div>' +
             '<div class="pj-pend-acts"><select data-faud="' + f.id + '">' + opts({ internal: '공백만', team: '참여자 공유', all: '임대인 포함' }, f.audience === 'internal' ? 'team' : f.audience) + '</select><button type="button" class="btn btn-primary btn-sm" data-fset="' + f.id + '">확인·공유</button></div></li>';
         }).join('') + '</ul></div>';
       }
       var rest = isAdmin() ? FL.filter(function (f) { return f.status !== 'pending'; }) : FL;
+      var cats = {}; rest.forEach(function (f) { cats[f.category || 'etc'] = (cats[f.category || 'etc'] || 0) + 1; });
+      if (!cats[fileCat]) fileCat = '';
+      if (rest.length > 4) html += '<div class="pj-bar"><div class="pills" id="fc-pills"><button type="button" data-c="" aria-pressed="' + (!fileCat) + '">전체<span class="c">' + rest.length + '</span></button>' + Object.keys(FILE_CAT).filter(function (k) { return cats[k]; }).map(function (k) { return '<button type="button" data-c="' + k + '" aria-pressed="' + (k === fileCat) + '">' + FILE_CAT[k] + '<span class="c">' + cats[k] + '</span></button>'; }).join('') + '</div></div>';
+      if (fileCat) rest = rest.filter(function (f) { return (f.category || 'etc') === fileCat; });
       html += '<div class="tbl-wrap"><table class="tbl pj-files"><thead><tr><th>자료</th><th>분류</th>' + (!isLandlord() ? '<th>공개 범위</th>' : '') + '<th>올린 사람</th><th class="num">크기</th><th>날짜</th><th></th></tr></thead><tbody>' +
         (rest.length ? rest.map(function (f) {
           var aud = f.audience ? (f.status === 'pending' ? chip('공백 확인 중', 'hot') : chip({ internal: '공백만', team: '참여자', all: '임대인 포함' }[f.audience], 'aud-' + f.audience)) : '';
-          return '<tr><td><a class="pj-fname" href="/api/center/files?id=' + f.id + '">' + esc(f.name) + '</a>' + (f.note ? '<div class="age">' + esc(f.note) + '</div>' : '') + '</td><td class="nw">' + esc(FILE_CAT[f.category] || '') + '</td>' +
-            (!isLandlord() ? '<td class="nw">' + (isAdmin() && !ro() ? '<select data-faud2="' + f.id + '">' + opts({ internal: '공백만', team: '참여자', all: '임대인 포함' }, f.audience) + '</select>' : aud) + '</td>' : '') +
+          return '<tr><td><a class="pj-fname" href="/api/center/files?id=' + f.id + '">' + esc(f.name) + '</a>' + (f.post_id ? ' ' + chip('소통 첨부', 'kind') : '') + (f.note ? '<div class="age">' + esc(f.note) + '</div>' : '') + '</td><td class="nw">' + esc(FILE_CAT[f.category] || '') + '</td>' +
+            (!isLandlord() ? '<td class="nw">' + (f.post_id ? '<span class="age">글 공개 범위를 따름</span>' : isAdmin() && !ro() ? '<select data-faud2="' + f.id + '">' + opts({ internal: '공백만', team: '참여자', all: '임대인 포함' }, f.audience) + '</select>' : aud) + '</td>' : '') +
             '<td class="nw">' + esc(f.by) + '</td><td class="num">' + size(f.size) + '</td><td class="nw">' + day(f.created_at) + '</td><td class="nw">' + (!ro() && (isAdmin() || f.own) ? '<button type="button" class="pj-link danger" data-fdel="' + f.id + '">삭제</button>' : '') + '</td></tr>';
         }).join('') : '<tr class="empty-row"><td colspan="7">' + (isLandlord() ? '공유된 자료가 없습니다.' : '아직 자료가 없습니다.') + '</td></tr>') + '</tbody></table></div>';
       el.innerHTML = html;
@@ -454,6 +553,8 @@
       if (ff) ff.onsubmit = function (e) { e.preventDefault(); var x = { category: ff.category.value, note: ff.note.value }; if (ff.audience) x.audience = ff.audience.value; uploadFile(ff.file.files[0], x); };
       $$('[data-fset]', el).forEach(function (b) { b.onclick = function () { var s = $('[data-faud="' + b.dataset.fset + '"]', el); api('/api/center/files', { project_id: id, action: 'update', id: +b.dataset.fset, audience: s.value }).then(function (j) { if (j.ok) { toast('공유 범위를 정했습니다.'); load(true); } }); }; });
       $$('[data-faud2]', el).forEach(function (s) { s.onchange = function () { api('/api/center/files', { project_id: id, action: 'update', id: +s.dataset.faud2, audience: s.value }).then(function (j) { if (j.ok) { toast('공개 범위를 바꿨습니다.'); load(true); } }); }; });
+      $$('#fc-pills button', el).forEach(function (b) { b.onclick = function () { fileCat = b.dataset.c; files(el); }; });
+      $$('[data-fok2]', el).forEach(function (b) { b.onclick = function () { api('/api/center/files', { project_id: id, action: 'update', id: +b.dataset.fok2 }).then(function (j) { if (j.ok) { toast('첨부 파일을 확인했습니다.'); load(true); } }); }; });
       $$('[data-fdel]', el).forEach(function (b) { b.onclick = function () { if (confirm('이 자료를 삭제할까요?')) api('/api/center/files', { project_id: id, action: 'delete', id: +b.dataset.fdel }).then(function (j) { if (j.ok) load(true); }); }; });
     }
 
@@ -547,7 +648,8 @@
       function rows(dir) {
         var L = M.filter(function (x) { return x.direction === dir; });
         return L.length ? L.map(function (x) {
-          return '<tr class="' + (x.status === 'cancel' ? 'is-cancel' : '') + '"><td>' + esc(x.label) + (x.memo ? '<div class="age">' + esc(x.memo) + '</div>' : '') + '</td>' + (dir === 'out' ? '<td class="nw">' + esc(mname(x.member_id)) + '</td>' : '') +
+          return '<tr class="' + (x.status === 'cancel' ? 'is-cancel' : '') + '"><td>' + esc(x.label) + (x.claim ? ' ' + chip(x.status === 'plan' ? '지급 요청' : '파트너 요청분', x.status === 'plan' ? 'hot' : '') : '') + (x.landlord_visible ? ' ' + chip('임대인에게 보임', 'aud-all') : '') + (x.invoice === 'issued' ? ' ' + chip('세금계산서 발행', 'kind') : '') + (x.memo ? '<div class="age">' + esc(x.memo) + '</div>' : '') +
+            '<div class="mo-toggles">' + (dir === 'in' ? '<button type="button" class="pj-link" data-mvis="' + x.id + '">' + (x.landlord_visible ? '임대인 화면에서 숨기기' : '임대인 화면에 보이기') + '</button>' : '') + '<button type="button" class="pj-link" data-moinv="' + x.id + '">' + (x.invoice === 'issued' ? '세금계산서 표시 지우기' : '세금계산서 발행 표시') + '</button></div></td>' + (dir === 'out' ? '<td class="nw">' + esc(mname(x.member_id)) + '</td>' : '') +
             '<td class="num nw">' + (x.base_amount != null && x.rate != null ? '<span class="age">' + won(x.base_amount) + ' × ' + x.rate + '%</span><br>' : '') + '<b>' + won(x.amount) + '</b></td>' +
             '<td><select data-mst="' + x.id + '">' + opts(MONEY_ST, x.status) + '</select></td><td class="nw">' + esc(x.due_date || '-') + '</td><td class="nw">' + esc(x.done_date || '-') + '</td><td class="nw"><button type="button" class="pj-link danger" data-mdel="' + x.id + '">삭제</button></td></tr>';
         }).join('') : '<tr class="empty-row"><td colspan="7">등록된 항목이 없습니다.</td></tr>';
@@ -555,7 +657,7 @@
       var act = mem.filter(function (m) { return m.status === 'active'; });
       el.innerHTML = '<div class="kpis"><div class="kpi"><div class="l">받을 돈 (예정·청구)</div><div class="v sm">' + won(sum('in', ['plan', 'due'])) + '</div></div><div class="kpi"><div class="l">받은 돈</div><div class="v sm">' + won(sum('in', ['done'])) + '</div></div>' +
         '<div class="kpi"><div class="l">줄 돈 (예정·확정)</div><div class="v sm">' + won(sum('out', ['plan', 'due'])) + '</div></div><div class="kpi' + (inAll - outAll < 0 ? ' hot' : '') + '"><div class="l">예상 차액 (받을 돈 − 줄 돈)</div><div class="v sm">' + won(inAll - outAll) + '</div><div class="s">취소 제외, 세금·비용 별도</div></div></div>' +
-        '<div class="grid2"><div>' +
+        '<div class="grid2 mo-grid"><div>' +
           '<div class="card"><h2>받을 돈 <small>공백이 받는 컨설팅비·성과보수 등</small></h2><div class="tbl-wrap flat"><table class="tbl"><thead><tr><th>항목</th><th class="num">금액</th><th>상태</th><th>예정일</th><th>완료일</th><th></th></tr></thead><tbody>' + rows('in') + '</tbody></table></div></div>' +
           '<div class="card"><h2>줄 돈 <small>파트너 수수료·보수</small></h2><div class="tbl-wrap flat"><table class="tbl"><thead><tr><th>항목</th><th>파트너</th><th class="num">금액</th><th>상태</th><th>예정일</th><th>완료일</th><th></th></tr></thead><tbody>' + rows('out') + '</tbody></table></div></div>' +
         '</div><div>' +
@@ -565,15 +667,23 @@
             '<div class="pj-fgrid"><div class="field"><label>기준 금액(원)</label><input type="text" name="base_amount" inputmode="numeric" placeholder="선택"></div><div class="field"><label>비율(%)</label><input type="text" name="rate" inputmode="decimal" placeholder="선택"></div></div>' +
             '<div class="field"><label>금액(원) <span class="muted-s">비우면 기준 금액 × 비율로 계산</span></label><input type="text" name="amount" inputmode="numeric"></div>' +
             '<div class="pj-fgrid"><div class="field"><label>상태</label><select name="status">' + opts(MONEY_ST, 'plan') + '</select></div><div class="field"><label>예정일</label><input type="date" name="due_date"></div></div>' +
-            '<div class="field"><label>메모</label><input type="text" name="memo" placeholder="세금계산서, 지급 조건 등"></div><button class="btn btn-ink btn-sm">추가</button></form>' +
+            '<div class="field"><label>메모</label><input type="text" name="memo" placeholder="부가세 포함 여부, 지급 조건 등"></div>' +
+            '<div id="mo-in-opts"><label class="pj-switch"><input type="checkbox" name="landlord_visible"><span>임대인 화면의 ‘비용·정산’에 청구 내역으로 보이기</span></label>' +
+              '<label class="pj-switch" style="margin-top:0"><input type="checkbox" name="notify"><span>상태가 ‘청구·확정’이면 임대인에게 메일로도 알리기</span></label></div>' +
+            '<label class="pj-switch" style="margin-top:0"><input type="checkbox" name="invoice"><span>세금계산서 발행함</span></label>' +
+            '<button class="btn btn-ink btn-sm">추가</button><p class="muted-s" style="margin-top:10px">임대인에게 보이는 항목은 항목 이름·금액·상태·기한·메모입니다. 내부용 항목은 체크하지 않으면 임대인에게 보이지 않습니다.</p></form>' +
           '<div class="card"><h2>파트너별 정산 조건</h2>' + (act.length ? '<ul class="mini-list">' + act.map(function (m) { var t = []; if (m.fee_rate != null) t.push(m.fee_rate + '%' + (m.fee_base ? ' (' + m.fee_base + ')' : '')); if (m.success_fee) t.push('성과 ' + m.success_fee); if (m.consulting_fee) t.push('컨설팅 ' + won(m.consulting_fee)); return '<li><span><b>' + esc(m.name) + '</b> ' + esc(m.alias) + '</span><span class="age">' + esc(t.join(' · ') || '미설정') + '</span></li>'; }).join('') + '</ul>' : '<p class="muted-s">참여 파트너가 없습니다.</p>') + '<p style="margin-top:10px"><a class="pj-more" href="#" data-go="people">조건 바꾸기</a></p></div>' +
         '</div></div>';
       var f = $('#mo-form', el), E = f.elements;
       function calc() { var b = parseFloat(String(E.base_amount.value).replace(/[^\d.]/g, '')), r = parseFloat(E.rate.value); E.amount.placeholder = (b && r) ? won(Math.round(b * r / 100)) + ' (자동)' : ''; }
-      $$('input[name=direction]', f).forEach(function (r) { r.onchange = function () { $('#mo-member', el).hidden = E.direction.value !== 'out'; }; });
+      $$('input[name=direction]', f).forEach(function (r) { r.onchange = function () { $('#mo-member', el).hidden = E.direction.value !== 'out'; $('#mo-in-opts', el).hidden = E.direction.value !== 'in'; }; });
       E.member_id.onchange = function () { var m = act.filter(function (x) { return x.id === +E.member_id.value; })[0]; if (!m) return; if (m.fee_rate != null) E.rate.value = m.fee_rate; $('#mo-terms', el).textContent = [m.fee_base ? '기준: ' + m.fee_base : '', m.success_fee ? '성과보수: ' + m.success_fee : '', m.consulting_fee ? '컨설팅비: ' + won(m.consulting_fee) : ''].filter(Boolean).join(' · '); calc(); };
       E.base_amount.oninput = calc; E.rate.oninput = calc;
-      f.onsubmit = function (e) { e.preventDefault(); api('/api/center/money', { project_id: id, action: 'save', direction: E.direction.value, member_id: E.member_id.value, label: E.label.value, base_amount: E.base_amount.value, rate: E.rate.value, amount: E.amount.value, status: E.status.value, due_date: E.due_date.value, memo: E.memo.value }).then(function (j) { if (j.ok) { toast('추가했습니다.'); load(true); } }); };
+      f.onsubmit = function (e) { e.preventDefault(); api('/api/center/money', { project_id: id, action: 'save', direction: E.direction.value, member_id: E.member_id.value, label: E.label.value, base_amount: E.base_amount.value, rate: E.rate.value, amount: E.amount.value, status: E.status.value, due_date: E.due_date.value, memo: E.memo.value,
+        landlord_visible: E.direction.value === 'in' && E.landlord_visible.checked, invoice: E.invoice.checked ? 'issued' : '', notify: E.notify.checked }).then(function (j) { if (j.ok) { toast('추가했습니다.' + (j.mailed ? ' 임대인에게 메일을 보냈습니다.' : '')); load(true); } }); };
+      function patchMoney(mid, extra, msg) { var x = M.filter(function (y) { return y.id === mid; })[0]; var b = { project_id: id, action: 'save', id: x.id, direction: x.direction, member_id: x.member_id, label: x.label, base_amount: x.base_amount, rate: x.rate, amount: x.amount, status: x.status, due_date: x.due_date, done_date: x.done_date, memo: x.memo }; Object.keys(extra).forEach(function (k) { b[k] = extra[k]; }); api('/api/center/money', b).then(function (j) { if (j.ok) { toast(msg); load(true); } }); }
+      $$('[data-mvis]', el).forEach(function (b) { b.onclick = function () { var x = M.filter(function (y) { return y.id === +b.dataset.mvis; })[0]; if (!x.landlord_visible && !confirm("'" + x.label + "' " + won(x.amount) + ' 항목을 임대인 화면에 청구 내역으로 보일까요?')) return; patchMoney(x.id, { landlord_visible: !x.landlord_visible }, x.landlord_visible ? '임대인 화면에서 숨겼습니다.' : '임대인 화면에 보이게 했습니다.'); }; });
+      $$('[data-moinv]', el).forEach(function (b) { b.onclick = function () { var x = M.filter(function (y) { return y.id === +b.dataset.moinv; })[0]; patchMoney(x.id, { invoice: x.invoice === 'issued' ? '' : 'issued' }, '세금계산서 표시를 바꿨습니다.'); }; });
       $$('[data-mst]', el).forEach(function (s) { s.onchange = function () { var x = M.filter(function (y) { return y.id === +s.dataset.mst; })[0]; api('/api/center/money', { project_id: id, action: 'save', id: x.id, direction: x.direction, member_id: x.member_id, label: x.label, base_amount: x.base_amount, rate: x.rate, amount: x.amount, status: s.value, due_date: x.due_date, done_date: s.value === 'done' ? (x.done_date || today()) : '', memo: x.memo }).then(function (j) { if (j.ok) { toast('상태를 바꿨습니다.'); load(true); } }); }; });
       $$('[data-mdel]', el).forEach(function (b) { b.onclick = function () { if (confirm('이 정산 항목을 삭제할까요?')) api('/api/center/money', { project_id: id, action: 'delete', id: +b.dataset.mdel }).then(function (j) { if (j.ok) load(true); }); }; });
       $$('[data-go]', el).forEach(function (a) { a.onclick = function (e) { e.preventDefault(); go(a.dataset.go); }; });
@@ -584,20 +694,24 @@
       var T = D.terms || {}, M = D.money || [];
       el.innerHTML = '<div class="grid2"><div><div class="card"><h2>이 프로젝트의 정산 조건</h2><dl class="dl"><dt>역할</dt><dd>' + esc(ROLES[T.role] || '') + '</dd><dt>수수료율</dt><dd>' + (T.fee_rate != null ? T.fee_rate + '%' + (T.fee_base ? ' (기준: ' + esc(T.fee_base) + ')' : '') : '-') + '</dd>' +
         '<dt>성과보수</dt><dd>' + esc(T.success_fee || '-') + '</dd><dt>컨설팅비</dt><dd>' + (T.consulting_fee ? won(T.consulting_fee) : '-') + '</dd>' + (T.fee_note ? '<dt>메모</dt><dd>' + esc(T.fee_note) + '</dd>' : '') + '</dl><p class="muted-s" style="margin-top:12px">조건은 공백과 맺은 계약을 따릅니다. 바뀐 내용이 있으면 소통 탭의 ‘공백에게만’으로 알려 주세요.</p></div>' +
-        '<div class="card"><h2>지급 내역</h2>' + (M.length ? '<ul class="mini-list">' + M.map(function (x) { return '<li><span>' + esc(x.label) + ' · <b>' + won(x.amount) + '</b></span><span class="age">' + MONEY_ST[x.status] + (x.done_date ? ' ' + esc(x.done_date) : x.due_date ? ' · 예정 ' + esc(x.due_date) : '') + '</span></li>'; }).join('') + '</ul>' : '<p class="muted-s">등록된 지급 내역이 없습니다.</p>') + '</div></div>' +
+        '<div class="card"><h2>지급 내역</h2>' + (M.length ? '<ul class="mini-list">' + M.map(function (x) {
+            var waiting = x.claim && x.status === 'plan';
+            return '<li><span>' + esc(x.label) + ' · <b>' + won(x.amount) + '</b>' + (waiting ? ' ' + chip('공백 확인 중', 'warn') : '') + (x.invoice === 'issued' ? ' ' + chip('세금계산서', 'kind') : '') + (x.memo ? '<br><span class="age">' + esc(x.memo) + '</span>' : '') + '</span>' +
+              '<span class="age">' + (waiting ? '요청함' : MONEY_ST[x.status]) + (x.done_date ? ' ' + esc(x.done_date) : x.due_date ? ' · 예정 ' + esc(x.due_date) : '') + (waiting && !ro() ? ' <button type="button" class="pj-link danger" data-cdel="' + x.id + '">요청 거두기</button>' : '') + '</span></li>';
+          }).join('') + '</ul>' : '<p class="muted-s">등록된 지급 내역이 없습니다.</p>') + '</div>' +
+        (ro() ? '' : '<form class="card form-v" id="cl-form"><h2>지급 요청하기</h2><p class="muted-s" style="margin-bottom:10px">계약한 조건에 따라 받을 금액이 생기면 요청해 주세요. 공백이 확인한 뒤 지급 일정을 확정합니다.</p>' +
+          '<div class="pj-fgrid"><div class="field"><label>항목</label><input type="text" name="label" maxlength="60" placeholder="예: 중개 수수료 1차" required></div><div class="field"><label>금액(원)</label><input type="text" name="amount" inputmode="numeric" required></div></div>' +
+          '<div class="field"><label>메모</label><input type="text" name="memo" maxlength="500" placeholder="산정 근거, 세금계산서 발행 여부 등"></div><button class="btn btn-ink btn-sm">요청 보내기</button></form>') + '</div>' +
         '<div><div class="card"><h2>이 프로젝트에서 볼 수 있는 정보</h2><ul class="pj-permview">' + PERMS.map(function (p) { var on = (T.perms || []).indexOf(p[0]) > -1; return '<li class="' + (on ? 'on' : '') + '"><b>' + (on ? '✓' : '–') + '</b><span>' + p[1] + '<em>' + p[2] + '</em></span></li>'; }).join('') + '</ul>' +
         '<p class="muted-s" style="margin-top:12px">임대인에게는 “' + esc(T.alias || '') + '”(으)로 표시되고, 이름·회사명·연락처는 공유되지 않습니다. 임대인과의 소통은 공백을 통해 진행해 주세요.</p></div></div></div>';
-    }
-
-    /* ---------- 기록 (관리자) ---------- */
-    function logTab(el) {
-      var K = { create: '생성', stage: '단계', update: '정보', member: '참여자', task: '추진사항', file: '자료', approve: '승인', reject: '비공개', money: '정산', access: '임대인 열람', invite: '안내 메일', landlord: '임대인', delete: '삭제' };
-      el.innerHTML = '<div class="card"><h2>프로젝트 기록 <small>관리자만 볼 수 있습니다</small></h2><ul class="timeline-a">' + ((D.log || []).map(function (x) { return '<li class="k-' + (x.kind === 'stage' ? 'stage' : x.kind === 'file' ? 'doc' : x.kind === 'approve' ? 'email' : '') + '"><div class="meta">' + dt(x.created_at) + ' · ' + (K[x.kind] || x.kind) + (x.actor ? ' · ' + esc(x.actor) : '') + '</div><div class="body">' + esc(x.body) + '</div></li>'; }).join('') || '<li>기록이 없습니다.</li>') + '</ul></div>';
+      var clf = $('#cl-form', el);
+      if (clf) clf.onsubmit = function (e) { e.preventDefault(); api('/api/center/money', { project_id: id, action: 'claim', label: clf.label.value, amount: clf.amount.value, memo: clf.memo.value }).then(function (j) { if (j.ok) { toast('지급 요청을 보냈습니다. 공백이 확인한 뒤 알려 드립니다.'); load(true); } }); };
+      $$('[data-cdel]', el).forEach(function (b) { b.onclick = function () { if (confirm('이 지급 요청을 거둘까요?')) api('/api/center/money', { project_id: id, action: 'claim_cancel', id: +b.dataset.cdel }).then(function (j) { if (j.ok) { toast('요청을 거뒀습니다.'); load(true); } }); }; });
     }
 
     load();
     return { reload: load };
   }
 
-  window.GBProject = { mount: mount, KINDS: KINDS, ROLES: ROLES, PSTAGES: PSTAGES, STAGE: STAGE, STAGE_EXT: STAGE_EXT, PERMS: PERMS, PRESETS: PRESETS, esc: esc, won: won, day: day, ago: ago, today: today };
+  window.GBProject = { mount: mount, KINDS: KINDS, ROLES: ROLES, PSTAGES: PSTAGES, STAGE: STAGE, STAGE_EXT: STAGE_EXT, PERMS: PERMS, PRESETS: PRESETS, esc: esc, won: won, day: day, dt: dt, ago: ago, today: today };
 })();

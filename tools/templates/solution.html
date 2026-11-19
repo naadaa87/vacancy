@@ -74,6 +74,21 @@
 <section class="section">
   <div class="wrap">
     <div class="section-head">
+      <h2>의뢰 후 진행 관리</h2>
+      <p>프로젝트가 시작되면 임대인센터에서 진행 상황을 직접 확인합니다. 전화나 메신저로 흩어지던 보고·결정·자료가 한곳에 남습니다.</p>
+    </div>
+    <ul class="center-feats">
+      {% for c in center_features %}
+      <li><b>{{ c.name }}</b><p>{{ c.desc }}</p></li>
+      {% endfor %}
+    </ul>
+    <p class="footnote">임대인센터는 공백이 초대한 임대인과 협력 파트너만 이용합니다. 로그인하면 본인과 관련된 프로젝트만 보이고, 협력 파트너와의 연락은 공백을 통해 이루어집니다. <a class="link-more" href="/center">임대인센터 살펴보기</a></p>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="section-head">
       <h2>자주 묻는 질문</h2>
     </div>
     <div class="faq">

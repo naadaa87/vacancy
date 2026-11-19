@@ -81,9 +81,11 @@
       if (!j.ok) return; var n = (j.counts.new || 0) + (j.counts.review || 0); var b = $('#nav-open'); b.textContent = n; b.hidden = !n;
     });
     req('GET', '/api/admin/center').then(function (j) {
-      if (!j.ok) return; var n = (j.counts.pending || 0) + (j.counts.overdue || 0); var b = $('#nav-proj'); b.textContent = n; b.hidden = !n;
+      if (!j.ok) return; var n = (j.counts.pending || 0) + (j.counts.overdue || 0) + (j.counts.waiting || 0) + (j.counts.claims || 0); var b = $('#nav-proj'); b.textContent = n; b.hidden = !n;
     });
+    req('GET', '/api/center/notifs?count=1').then(function (j) { if (j.ok) setBell(j.unread); });
   }
+  function setBell(n) { var b = $('#nav-bell'); if (b) { b.textContent = n; b.hidden = !n; } }
 
   /* ---------- 라우터 ---------- */
   var ROUTES = [
@@ -105,6 +107,8 @@
     [/^#\/partners/, 'partners', partners],
     [/^#\/partner\/(\d+)/, 'partners', partnerDetail],
     [/^#\/finance/, 'finance', finance],
+    [/^#\/calendar/, 'calendar', calendarAll],
+    [/^#\/notifs/, 'notifs', notifsAll],
   ];
   function route() {
     if (!ME) return;
@@ -154,6 +158,10 @@
       if (D.failed) todo.push(['red', '<a href="#/documents">메일 발송 실패 ' + D.failed + '건</a>', '받는 사람은 마이페이지(회원)에서 자료를 볼 수 있지만, 메일 설정을 확인해 주세요.']);
       if (!j.setup.mail) todo.push(['red', '<a href="#/settings">이메일 발송이 설정되지 않음</a>', '문의 알림, 고객 회신, 자료 발송 메일이 나가지 않습니다.']);
       if (C && C.counts.pending) todo.push(['red', '<a href="#/projects">임대인센터 확인 대기 ' + C.counts.pending + '건</a>', '임대인 공개를 요청한 파트너 글·자료, 임대인이 보낸 자료입니다.']);
+      if (C && C.counts.waiting) todo.push(['red', '<a href="#/projects">임대인·파트너 문의 ' + C.counts.waiting + '건이 답변 대기 중</a>', '임대인센터 소통 탭에 남긴 요청 글입니다. 답글을 달면 알림이 갑니다.']);
+      if (C && C.counts.approvals_new) todo.push(['amber', '<a href="#/projects">확인 요청 응답 도착 ' + C.counts.approvals_new + '건</a>', '최근 7일 안에 임대인·파트너가 승인·수정 요청·보류로 응답했습니다.']);
+      if (C && C.counts.claims) todo.push(['amber', '<a href="#/finance">파트너 지급 요청 ' + C.counts.claims + '건</a>', '금액을 확인하고 지급 일정을 확정해 주세요.']);
+      if (C && C.week_events && C.week_events.length) todo.push(['', '<a href="#/calendar">7일 안의 일정 ' + C.week_events.length + '건</a>', esc(C.week_events.slice(0, 2).map(function (e) { return e.date.slice(5).replace('-', '/') + (e.time ? ' ' + e.time : '') + ' ' + e.title; }).join(' · '))]);
       if (C && C.counts.overdue) todo.push(['amber', '<a href="#/projects">기한이 지난 추진사항 ' + C.counts.overdue + '건</a>', '담당 파트너에게 확인하거나 기한을 조정해 주세요.']);
       if (C && C.counts.stale) todo.push(['', '<a href="#/projects">2주 넘게 움직임이 없는 프로젝트 ' + C.counts.stale + '건</a>', '진행 상황을 한 줄이라도 남겨 두면 임대인이 안심합니다.']);
       if (M.unverified) todo.push(['', '<a href="#/members?filter=unverified">이메일 미인증 회원 ' + M.unverified + '명</a>', '필요하면 회원 상세에서 인증 처리할 수 있습니다.']);
@@ -476,7 +484,8 @@
   /* ---------- 설정 점검 ---------- */
   function settings() {
     setTitle('설정 점검');
-    get('/api/health').then(function (h) {
+    Promise.all([get('/api/health'), get('/api/admin/settings')]).then(function (rs) {
+      var h = rs[0], ST = rs[1].ok ? rs[1] : null;
       function row(ok, t, d) { return '<li class="' + (ok ? 'ok' : 'no') + '"><span class="mk">' + (ok ? '완료' : '필요') + '</span><div><b>' + t + '</b><p>' + d + '</p></div></li>'; }
       view.innerHTML = '<div class="v-head"><div><h1>설정 점검</h1><p>Cloudflare Pages → Settings에서 바꾼 값은 다시 배포해야 반영됩니다.</p></div></div>' +
         '<div class="grid2"><div><ul class="check-list">' +
@@ -490,7 +499,24 @@
           '<li><span class="dot"></span><div><b>첨부 파일</b><p>파일은 데이터베이스에 나눠 저장합니다(10MB 이하). D1 무료 용량은 5GB입니다.</p></div></li>' +
           '<li><span class="dot"></span><div><b>광고성 메일</b><p>(광고) 표기·수신거부·회사 정보는 자동으로 들어갑니다. 야간(21시~08시) 발송은 별도 동의가 필요하니 낮 시간에 보내세요.</p></div></li>' +
           '<li><span class="dot"></span><div><b>데이터 백업</b><p>문의·회원 목록은 각 화면의 엑셀(CSV) 내려받기로 주기적으로 보관하세요.</p></div></li>' +
-        '</ul></div></div></div>';
+        '</ul></div></div></div>' +
+        (ST ? '<form class="card form-v" id="set-center" style="margin-top:14px"><h2>임대인센터 설정</h2><div class="grid2"><div>' +
+          '<div class="field"><label>납부 안내 문구 <span class="muted-s">(임대인 화면의 ‘비용·정산’ 아래에 보입니다)</span></label><textarea name="pay_note" rows="4" maxlength="1000" placeholder="예: 입금 계좌와 예금주, 세금계산서 발행 기준, 문의 연락처">' + esc(ST.pay_note || '') + '</textarea></div>' +
+          '<button class="btn btn-ink btn-sm">저장</button></div><div>' +
+          '<label class="pj-switch"><input type="checkbox" name="digest"' + (ST.digest === 'on' ? ' checked' : '') + '><span><b>임대인·파트너에게 아침 요약 메일 보내기</b><br><span class="muted-s">기한이 오늘·내일인 일, 내일 일정이 있는 분에게만 하루 한 통 보냅니다. 받는 분이 직접 끌 수도 있습니다. 꺼 두면 알림함에만 표시됩니다(처음에는 꺼져 있습니다).</span></span></label>' +
+          '<label class="pj-switch" style="margin-top:0"><input type="checkbox" name="digest_admin"' + (ST.digest_admin !== 'off' ? ' checked' : '') + '><span><b>관리자 요약 메일 받기</b><br><span class="muted-s">답변 대기 문의, 승인 대기, 지급 요청, 오늘·내일 일정과 기한을 모아 문의 알림 받는 주소로 보냅니다.</span></span></label>' +
+          '<p class="muted-s" style="margin-top:8px">기한·일정 알림은 한국시간 오전 8시 이후 홈페이지에 첫 방문이 있을 때 하루 한 번 실행됩니다. 마지막 실행: ' + esc(ST.daily_last || '아직 없음') + '</p>' +
+          '<p style="margin-top:10px"><button type="button" class="btn btn-outline btn-sm" id="set-run">지금 한 번 보내 보기</button></p></div></div></form>' : '');
+      var sf = $('#set-center');
+      if (sf) {
+        sf.onsubmit = function (e) { e.preventDefault(); post('/api/admin/settings', { action: 'save', pay_note: sf.pay_note.value, digest: sf.digest.checked ? 'on' : 'off', digest_admin: sf.digest_admin.checked ? 'on' : 'off' }).then(function (j) { toast(j.ok ? '저장했습니다.' : errText(j), !j.ok); }); };
+        sf.digest.onchange = sf.digest_admin.onchange = function () { sf.requestSubmit ? sf.requestSubmit() : sf.onsubmit({ preventDefault: function () {} }); };
+        $('#set-run').onclick = function (e) {
+          if (!confirm('기한·일정 알림과 요약 메일을 지금 한 번 보낼까요? 오늘 이미 보냈다면 같은 알림이 한 번 더 갑니다.')) return;
+          e.target.disabled = true;
+          post('/api/admin/settings', { action: 'run_daily' }).then(function (j) { e.target.disabled = false; toast(j.ok ? '알림 ' + j.result.notifs + '건, 요약 메일 ' + (j.result.mails + (j.result.admin_mail ? 1 : 0)) + '통을 보냈습니다.' : errText(j), !j.ok); });
+        };
+      }
     });
   }
 
@@ -498,6 +524,7 @@
      임대인센터 (프로젝트·임대인·파트너·정산)
      ========================================================================== */
   var G = window.GBProject;
+  var W = window.GBWork;
   var PROLE = G.ROLES, PKIND = G.KINDS;
   var ACTIVE = ['intake', 'diagnosis', 'proposal', 'contract', 'execution', 'closing'];
   function pstage(s) { return '<span class="st ps-' + s + '">' + esc(G.STAGE[s] || s) + '</span>'; }
@@ -516,13 +543,17 @@
       if (C.ok) {
         C.pending_posts.forEach(function (x) { todo.push(['red', '<a href="#/project/' + x.project_id + '?tab=feed">' + esc(x.code || '') + ' 임대인 공개 요청 글</a>', esc((x.name || '파트너') + (x.company ? ' · ' + x.company : '')) + ' — ' + esc(x.body)]); });
         C.pending_files.forEach(function (x) { todo.push(['red', '<a href="#/project/' + x.project_id + '?tab=files">' + esc(x.code || '') + (x.uploader_type === 'landlord' ? ' 임대인이 보낸 자료' : ' 임대인 공개 요청 자료') + '</a>', esc(x.name) + ' · ' + esc(x.title)]); });
+        (C.waiting || []).forEach(function (x) { todo.push(['red', '<a href="#/project/' + x.project_id + '?tab=feed">' + esc(x.code || '') + ' 답변 대기: ' + esc(x.who) + '</a>', esc(x.body) + ' · ' + ago(x.created_at)]); });
+        (C.approvals || []).filter(function (x) { return x.status !== 'pending'; }).forEach(function (x) { todo.push([x.status === 'approved' ? 'green' : 'amber', '<a href="#/project/' + x.project_id + '?tab=approvals">' + esc(x.code || '') + ' 확인 요청 응답: ' + esc(W.AP_ST[x.status]) + '</a>', esc(x.title) + (x.response ? ' — ' + esc(x.response) : '')]); });
+        (C.approvals || []).filter(function (x) { return x.status === 'pending' && x.due_date && x.due_date < G.today(); }).forEach(function (x) { todo.push(['amber', '<a href="#/project/' + x.project_id + '?tab=approvals">' + esc(x.code || '') + ' 확인 요청 기한 지남</a>', esc(x.title) + ' · 기한 ' + esc(x.due_date)]); });
+        (C.claims || []).forEach(function (x) { todo.push(['amber', '<a href="#/project/' + x.project_id + '?tab=money">' + esc(x.code || '') + ' 지급 요청: ' + esc(x.label) + ' ' + G.won(x.amount) + '</a>', esc((x.name || '파트너') + (x.company ? ' · ' + x.company : '')) + (x.memo ? ' — ' + esc(x.memo) : '')]); });
         C.overdue.slice(0, 8).forEach(function (x) { todo.push(['amber', '<a href="#/project/' + x.project_id + '?tab=tasks">' + esc(x.code || '') + ' 기한 지남: ' + esc(x.title) + '</a>', esc(x.ptitle) + ' · 기한 ' + esc(x.due_date)]); });
         C.stale.slice(0, 5).forEach(function (x) { todo.push(['', '<a href="#/project/' + x.id + '">' + esc(x.code || '') + ' 2주 넘게 업데이트 없음</a>', esc(x.title) + ' · 마지막 ' + day(x.updated_at)]); });
       }
       view.innerHTML = '<div class="v-head"><div><h1>임대인센터 프로젝트</h1><p>건물·임대인별 프로젝트를 만들고, 파트너 권한과 진행 상황을 관리합니다. 파트너와 임대인은 <a href="/center" target="_blank" rel="noopener">vacancy.co.kr/center</a>에서 봅니다.</p></div>' +
-        '<div class="acts"><a class="btn btn-outline btn-sm" href="#/finance">정산 현황</a><a class="btn btn-primary btn-sm" href="#/project/new">새 프로젝트</a></div></div>' +
+        '<div class="acts"><a class="btn btn-outline btn-sm" href="#/calendar">전체 일정</a><a class="btn btn-outline btn-sm" href="#/finance">정산 현황</a><a class="btn btn-primary btn-sm" href="#/project/new">새 프로젝트</a></div></div>' +
         '<div class="kpis"><a class="kpi" href="#/projects?g=active"><div class="l">진행 중 프로젝트</div><div class="v">' + (cnt.active || 0) + '</div><div class="s">전체 ' + (cnt.total || 0) + '건</div></a>' +
-          '<div class="kpi' + (cnt.pending ? ' hot' : '') + '"><div class="l">확인 대기</div><div class="v">' + (cnt.pending || 0) + '</div><div class="s">임대인 공개 요청·임대인 자료</div></div>' +
+          '<div class="kpi' + ((cnt.pending || 0) + (cnt.waiting || 0) ? ' hot' : '') + '"><div class="l">확인·답변 대기</div><div class="v">' + ((cnt.pending || 0) + (cnt.waiting || 0)) + '</div><div class="s">답변 대기 문의 ' + (cnt.waiting || 0) + ' · 공개 승인 ' + (cnt.pending || 0) + '</div></div>' +
           '<div class="kpi' + (cnt.overdue ? ' hot' : '') + '"><div class="l">기한 지난 추진사항</div><div class="v">' + (cnt.overdue || 0) + '</div><div class="s">7일 안에 기한 ' + (cnt.due_soon || 0) + '건</div></div>' +
           '<a class="kpi" href="#/finance"><div class="l">받을 돈 (예정·청구)</div><div class="v sm">' + (C.ok ? G.won(C.money.in_plan) : '-') + '</div><div class="s">줄 돈 ' + (C.ok ? G.won(C.money.out_plan) : '-') + '</div></a></div>' +
         (todo.length ? '<div class="card" style="margin-bottom:14px"><h2>확인할 일 <small>' + todo.length + '건</small></h2><ul class="todo">' + todo.map(function (t) { return '<li><span class="dot ' + t[0] + '"></span><div>' + t[1] + '<p>' + t[2] + '</p></div></li>'; }).join('') + '</ul></div>' : '') +
@@ -541,7 +572,7 @@
         });
       }
       function flags(x) {
-        return (x.pending_posts + x.pending_files ? '<span class="st st-new">확인 ' + (x.pending_posts + x.pending_files) + '</span> ' : '') + (x.overdue ? '<span class="st st-review">지연 ' + x.overdue + '</span> ' : '') + (x.unread ? '<span class="st">새 글 ' + x.unread + '</span>' : '');
+        return (x.waiting ? '<span class="st st-new">답변 대기 ' + x.waiting + '</span> ' : '') + (x.approvals_wait ? '<span class="st st-review">응답 대기 ' + x.approvals_wait + '</span> ' : '') + (x.pending_posts + x.pending_files ? '<span class="st st-new">확인 ' + (x.pending_posts + x.pending_files) + '</span> ' : '') + (x.overdue ? '<span class="st st-review">지연 ' + x.overdue + '</span> ' : '') + (x.unread ? '<span class="st">새 글 ' + x.unread + '</span>' : '');
       }
       function draw() {
         $('#pj-g').innerHTML = Object.keys(G_).map(function (k) { return '<button type="button" data-g="' + k + '" aria-pressed="' + (k === grp) + '">' + G_[k][0] + '<span class="c">' + items.filter(G_[k][1]).length + '</span></button>'; }).join('');
@@ -782,21 +813,29 @@
     Promise.all([get('/api/admin/center?view=finance'), get('/api/admin/center')]).then(function (rs) {
       var j = rs[0], C = rs[1];
       if (!j.ok) { view.innerHTML = '<p class="muted-s">' + errText(j) + '</p>'; return; }
-      var items = j.items, dir = '', st = 'open', MS = { plan: '예정', due: '청구·확정', done: '완료', cancel: '취소' }, m = C.ok ? C.money : {};
+      var items = j.items, dir = '', st = 'open', MS = { plan: '예정', due: '청구·확정', done: '완료', cancel: '취소' }, m = C.ok ? C.money : {}, td = G.today();
+      var lateOf = function (d) { return items.filter(function (x) { return x.direction === d && (x.status === 'plan' || x.status === 'due') && x.due_date && x.due_date < td; }); };
+      var lateIn = lateOf('in'), lateOut = lateOf('out'), sumA = function (a) { return a.reduce(function (t, x) { return t + (x.amount || 0); }, 0); };
+      var claims = items.filter(function (x) { return x.claim && x.status === 'plan'; });
       var byP = {}; items.filter(function (x) { return x.direction === 'out' && x.status !== 'cancel'; }).forEach(function (x) { var k = x.partner_name || '-'; byP[k] = byP[k] || { name: k, company: x.partner_company, open: 0, done: 0 }; if (x.status === 'done') byP[k].done += x.amount || 0; else byP[k].open += x.amount || 0; });
       view.innerHTML = '<div class="v-head"><div><h1>정산 현황</h1><p>프로젝트별로 등록한 받을 돈과 파트너 지급을 모아 봅니다. 금액은 입력한 값 그대로이며 세금·비용은 따로 계산해야 합니다.</p></div><div class="acts"><a class="btn btn-outline btn-sm" href="/api/admin/center?view=finance&format=csv">엑셀(CSV) 내려받기</a></div></div>' +
         '<div class="kpis"><div class="kpi"><div class="l">받을 돈 (예정·청구)</div><div class="v sm">' + G.won(m.in_plan) + '</div><div class="s">청구 ' + G.won(m.in_due) + '</div></div><div class="kpi"><div class="l">받은 돈</div><div class="v sm">' + G.won(m.in_done) + '</div></div>' +
           '<div class="kpi"><div class="l">줄 돈 (예정·확정)</div><div class="v sm">' + G.won(m.out_plan) + '</div><div class="s">확정 ' + G.won(m.out_due) + '</div></div><div class="kpi"><div class="l">준 돈</div><div class="v sm">' + G.won(m.out_done) + '</div></div></div>' +
+        (lateIn.length || lateOut.length || claims.length ? '<div class="card" style="margin-bottom:14px"><h2>확인할 정산</h2><ul class="todo">' +
+          (claims.length ? '<li><span class="dot red"></span><div><b>파트너 지급 요청 ' + claims.length + '건 · ' + G.won(sumA(claims)) + '</b><p>' + claims.slice(0, 4).map(function (x) { return '<a href="#/project/' + x.project_id + '?tab=money">' + esc((x.code || '') + ' ' + (x.partner_name || '') + ' ' + x.label) + '</a>'; }).join(' · ') + '</p></div></li>' : '') +
+          (lateIn.length ? '<li><span class="dot amber"></span><div><b>예정일이 지난 받을 돈 ' + lateIn.length + '건 · ' + G.won(sumA(lateIn)) + '</b><p>' + lateIn.slice(0, 4).map(function (x) { return '<a href="#/project/' + x.project_id + '?tab=money">' + esc((x.code || '') + ' ' + x.label) + '</a> ' + esc(x.due_date); }).join(' · ') + '</p></div></li>' : '') +
+          (lateOut.length ? '<li><span class="dot amber"></span><div><b>예정일이 지난 줄 돈 ' + lateOut.length + '건 · ' + G.won(sumA(lateOut)) + '</b><p>' + lateOut.slice(0, 4).map(function (x) { return '<a href="#/project/' + x.project_id + '?tab=money">' + esc((x.code || '') + ' ' + (x.partner_name || '') + ' ' + x.label) + '</a> ' + esc(x.due_date); }).join(' · ') + '</p></div></li>' : '') + '</ul></div>' : '') +
         '<div class="grid2"><div><div class="pills" id="fi-d"></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>구분</th><th>프로젝트</th><th>항목</th><th>파트너</th><th class="num">금액</th><th>상태</th><th>예정일</th><th>완료일</th></tr></thead><tbody id="fi-body"></tbody></table></div></div>' +
         '<div><div class="card"><h2>파트너별 지급</h2>' + (Object.keys(byP).length ? '<ul class="mini-list">' + Object.keys(byP).map(function (k) { var x = byP[k]; return '<li><span><b>' + esc(x.name) + '</b> <span class="age">' + esc(x.company || '') + '</span></span><span class="age">남은 지급 ' + G.won(x.open) + ' · 지급 완료 ' + G.won(x.done) + '</span></li>'; }).join('') + '</ul>' : '<p class="muted-s">지급 내역이 없습니다.</p>') + '</div>' +
-          '<div class="card"><h2>입력 방법</h2><p class="muted-s">각 프로젝트의 ‘정산’ 탭에서 받을 돈(컨설팅비·성과보수·중개보수)과 줄 돈(파트너 수수료)을 등록합니다. 줄 돈은 파트너의 수수료율을 불러와 기준 금액 × 비율로 계산할 수 있습니다.</p></div></div></div>';
+          '<div class="card"><h2>입력 방법</h2><p class="muted-s">각 프로젝트의 ‘정산’ 탭에서 받을 돈(컨설팅비·성과보수·중개보수)과 줄 돈(파트너 수수료)을 등록합니다. 줄 돈은 파트너의 수수료율을 불러와 기준 금액 × 비율로 계산할 수 있습니다.</p>' +
+            '<p class="muted-s" style="margin-top:8px">받을 돈 가운데 ‘임대인 화면에 보이기’로 정한 항목만 임대인의 비용·정산 화면에 청구 내역으로 나타납니다. 파트너가 보낸 지급 요청은 금액을 확인한 뒤 상태를 ‘청구·확정’이나 ‘완료’로 바꾸면 파트너에게 알림이 갑니다.</p></div></div></div>';
       function draw() {
         $('#fi-d').innerHTML = [['', '전체'], ['in', '받을 돈'], ['out', '줄 돈']].map(function (d) { return '<button type="button" data-d="' + d[0] + '" aria-pressed="' + (d[0] === dir) + '">' + d[1] + '</button>'; }).join('') +
           [['open', '미완료'], ['done', '완료'], ['all', '상태 전체']].map(function (s) { return '<button type="button" data-s="' + s[0] + '" aria-pressed="' + (s[0] === st) + '">' + s[1] + '</button>'; }).join('');
         var rows = items.filter(function (x) { return (!dir || x.direction === dir) && (st === 'all' || (st === 'done' ? x.status === 'done' : (x.status === 'plan' || x.status === 'due'))); });
         $('#fi-body').innerHTML = rows.length ? rows.map(function (x) {
-          return '<tr data-id="' + x.project_id + '"><td class="nw">' + (x.direction === 'in' ? '<span class="st st-contract">받을 돈</span>' : '<span class="st st-replied">줄 돈</span>') + '</td><td><span class="pj-code">' + esc(x.code || '') + '</span> ' + esc(x.title) + '</td><td>' + esc(x.label || '') + '</td><td class="nw">' + esc(x.partner_name || '') + '</td>' +
-            '<td class="num nw"><b>' + G.won(x.amount) + '</b></td><td class="nw">' + MS[x.status] + '</td><td class="nw">' + esc(x.due_date || '') + '</td><td class="nw">' + esc(x.done_date || '') + '</td></tr>';
+          return '<tr data-id="' + x.project_id + '"><td class="nw">' + (x.direction === 'in' ? '<span class="st st-contract">받을 돈</span>' : '<span class="st st-replied">줄 돈</span>') + '</td><td><span class="pj-code">' + esc(x.code || '') + '</span> ' + esc(x.title) + '</td><td>' + esc(x.label || '') + (x.claim && x.status === 'plan' ? ' <span class="pj-chip hot">지급 요청</span>' : '') + (x.landlord_visible ? ' <span class="pj-chip aud-all">임대인에게 보임</span>' : '') + (x.invoice === 'issued' ? ' <span class="pj-chip kind">세금계산서</span>' : '') + '</td><td class="nw">' + esc(x.partner_name || '') + '</td>' +
+            '<td class="num nw"><b>' + G.won(x.amount) + '</b></td><td class="nw">' + MS[x.status] + '</td><td class="nw' + ((x.status === 'plan' || x.status === 'due') && x.due_date && x.due_date < td ? ' late' : '') + '">' + esc(x.due_date || '') + '</td><td class="nw">' + esc(x.done_date || '') + '</td></tr>';
         }).join('') : '<tr class="empty-row"><td colspan="8">해당하는 정산 항목이 없습니다.</td></tr>';
         $$('#fi-body tr[data-id]').forEach(function (tr) { tr.onclick = function () { location.hash = '#/project/' + tr.dataset.id + '?tab=money'; }; });
       }
@@ -805,6 +844,40 @@
     });
   }
 
+  /* ---------- 전체 일정 (모든 프로젝트) ---------- */
+  function calendarAll() {
+    setTitle('전체 일정');
+    var today = G.today(), data = [], pid = '', types = { event: 1, task: 1, approval: 1, money: 1, lease: 1 }, cal = null, seq = SEQ;
+    var TL = { event: '일정', task: '추진사항 기한', approval: '확인 요청 기한', money: '정산 예정일', lease: '임대차 만기' };
+    var tabOf = { event: 'schedule', task: 'tasks', approval: 'approvals', money: 'money', lease: 'building' };
+    view.innerHTML = '<div class="v-head"><div><h1>전체 일정</h1><p>모든 프로젝트의 일정, 추진사항 기한, 확인 요청 기한, 정산 예정일, 임대차 만기를 한 달 단위로 봅니다. 일정 등록은 각 프로젝트의 일정 탭에서 합니다.</p></div>' +
+      '<div class="acts"><a class="btn btn-outline btn-sm" href="/api/center/agenda?ics=1">캘린더 파일(.ics) 받기</a></div></div>' +
+      '<div class="fbar"><select id="ca-p"><option value="">프로젝트 전체</option></select><div class="ca-types" id="ca-t">' + Object.keys(TL).map(function (k) { return '<label class="pj-mini"><input type="checkbox" value="' + k + '" checked> ' + TL[k] + '</label>'; }).join('') + '</div></div>' +
+      '<div class="card"><div id="ca-box"><p class="muted-s">불러오는 중…</p></div></div>';
+    function shown() { return data.filter(function (it) { return (!pid || String(it.project_id) === pid) && types[it.type]; }); }
+    function fetchMonth(ym, done) {
+      var first = ym + '-01';
+      req('GET', '/api/center/agenda?from=' + W.addDays(first, -7) + '&to=' + W.addDays(first, 38)).then(function (j) {
+        if (seq !== SEQ) return;
+        data = j.ok ? j.items : [];
+        data.forEach(function (it) { it.href = '#/project/' + it.project_id + '?tab=' + tabOf[it.type]; });
+        done();
+      });
+    }
+    get('/api/center/projects').then(function (p) {
+      if (p.ok) $('#ca-p').innerHTML += p.items.map(function (x) { return '<option value="' + x.id + '">' + esc((x.code ? x.code + ' ' : '') + x.title) + '</option>'; }).join('');
+    });
+    fetchMonth(today.slice(0, 7), function () { cal = W.calendar($('#ca-box'), { items: shown, today: today, load: fetchMonth }); });
+    $('#ca-p').onchange = function (e) { pid = e.target.value; if (cal) cal.redraw(); };
+    $('#ca-t').onchange = function (e) { types[e.target.value] = e.target.checked; if (cal) cal.redraw(); };
+  }
+
+  /* ---------- 알림 ---------- */
+  function notifsAll() {
+    setTitle('알림');
+    view.innerHTML = '<div class="v-head"><div><h1>알림</h1><p>임대인·파트너가 남긴 글, 확인 요청 응답, 참석 응답, 자료, 지급 요청이 여기에 모입니다. 프로젝트를 열면 그 프로젝트의 알림은 읽음으로 바뀝니다.</p></div></div><div id="nt-box"></div>';
+    W.notifPanel($('#nt-box'), { req: req, toast: toast, onCount: setBell, noPrefs: true });
+  }
 
   boot();
 })();

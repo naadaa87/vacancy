@@ -4,13 +4,16 @@
  */
 import { handle, readJson, json, HttpError, clip, normEmail, isEmail, nowIso, addNote } from '../../../lib/server.js';
 import { requireCenter, makeMasker, KINDS, PSTAGE_IDS, pick, cleanKinds, toDate, toInt, todayKst, nextCode, logp, templateRows, insertTasks, aliasOf } from '../../../lib/center.js';
+import { dailyTick } from '../../../lib/workspace.js';
 
 const inList = ids => ids.map(() => '?').join(',') || 'NULL';
 
-export const onRequestGet = handle(async ({ request, env }) => {
+export const onRequestGet = handle(async (c) => {
+  const { request, env } = c;
   const acc = await requireCenter(env, request);
   const { DB, user } = acc;
   const today = todayKst();
+  try { c.waitUntil(dailyTick(env, request)); } catch (_) {}
 
   if (acc.admin) {
     const { results = [] } = await DB.prepare(
@@ -24,6 +27,8 @@ export const onRequestGet = handle(async ({ request, env }) => {
         (SELECT COUNT(*) FROM project_tasks t WHERE t.project_id = p.id AND t.status != 'done' AND t.due_date IS NOT NULL AND t.due_date < ?1) overdue,
         (SELECT COUNT(*) FROM project_posts x WHERE x.project_id = p.id AND x.status = 'pending') pending_posts,
         (SELECT COUNT(*) FROM project_files f WHERE f.project_id = p.id AND f.status = 'pending') pending_files,
+        (SELECT COUNT(*) FROM project_posts x WHERE x.project_id = p.id AND x.parent_id IS NULL AND x.kind = 'request' AND x.author_type != 'admin' AND x.answered_at IS NULL AND x.resolved_at IS NULL) waiting,
+        (SELECT COUNT(*) FROM project_approvals a WHERE a.project_id = p.id AND a.status = 'pending') approvals_wait,
         (SELECT COUNT(*) FROM project_posts x WHERE x.project_id = p.id AND x.author_type != 'admin'
            AND x.created_at > COALESCE((SELECT seen_at FROM project_seen s WHERE s.user_id = ?2 AND s.project_id = p.id), '')) unread
        FROM projects p LEFT JOIN landlords l ON l.id = p.landlord_id ORDER BY p.updated_at DESC, p.id DESC`).bind(today, user.id).all();
@@ -34,7 +39,8 @@ export const onRequestGet = handle(async ({ request, env }) => {
   // 파트너로 참여 중인 프로젝트
   if (acc.partner) {
     const { results = [] } = await DB.prepare(
-      `SELECT p.id, p.code, p.title, p.stage, p.kinds, p.address, p.due_date, p.updated_at, p.landlord_id, m.id member_id, m.role, m.alias, m.perms,
+      `SELECT p.id, p.code, p.title, p.stage, p.kinds, p.address, p.due_date, p.updated_at, p.closed_at, p.landlord_id, m.id member_id, m.role, m.alias, m.perms,
+        (SELECT COUNT(*) FROM project_approvals a WHERE a.project_id = p.id AND a.status = 'pending' AND a.target = 'm:' || m.id) approvals,
         (SELECT COUNT(*) FROM project_tasks t WHERE t.project_id = p.id AND (t.visibility != 'internal' OR t.owner = 'm:' || m.id)) tasks_total,
         (SELECT COUNT(*) FROM project_tasks t WHERE t.project_id = p.id AND (t.visibility != 'internal' OR t.owner = 'm:' || m.id) AND t.status = 'done') tasks_done,
         (SELECT COUNT(*) FROM project_tasks t WHERE t.project_id = p.id AND t.owner = 'm:' || m.id AND t.status != 'done') my_open,
@@ -54,7 +60,8 @@ export const onRequestGet = handle(async ({ request, env }) => {
   const lids = acc.landlords.map(l => l.id);
   if (lids.length) {
     const { results = [] } = await DB.prepare(
-      `SELECT p.id, p.code, p.title, p.stage, p.kinds, p.address, p.due_date, p.updated_at, p.landlord_id,
+      `SELECT p.id, p.code, p.title, p.stage, p.kinds, p.address, p.due_date, p.updated_at, p.closed_at, p.landlord_id,
+        (SELECT COUNT(*) FROM project_approvals a WHERE a.project_id = p.id AND a.status = 'pending' AND a.target = 'l') approvals,
         (SELECT COUNT(*) FROM project_tasks t WHERE t.project_id = p.id AND (t.visibility = 'all' OR t.owner = 'l')) tasks_total,
         (SELECT COUNT(*) FROM project_tasks t WHERE t.project_id = p.id AND (t.visibility = 'all' OR t.owner = 'l') AND t.status = 'done') tasks_done,
         (SELECT COUNT(*) FROM project_tasks t WHERE t.project_id = p.id AND t.owner = 'l' AND t.status != 'done') my_open,
@@ -88,7 +95,7 @@ export const onRequestGet = handle(async ({ request, env }) => {
   const out = items.map(it => {
     const mask = maskers[it.id];
     const o = { id: it.id, code: it.code, title: mask(it.title), stage: it.stage, kinds: it.kinds, address: it.address, due_date: it.due_date, updated_at: it.updated_at,
-      as: it.as, tasks_total: it.tasks_total, tasks_done: it.tasks_done, my_open: it.my_open, unread: it.unread };
+      as: it.as, tasks_total: it.tasks_total, tasks_done: it.tasks_done, my_open: it.my_open, unread: it.unread, approvals: it.approvals || 0, closed_at: it.closed_at };
     if (it.as === 'partner') { o.role = it.role; o.alias = aliasOf(it); }
     return o;
   });
@@ -105,7 +112,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
   const { DB, user } = acc;
   const title = clip(b.title, 120);
   if (!title) throw new HttpError('validation', 422, { fields: ['title'], message: '프로젝트 이름을 입력해 주세요.' });
-  const now = nowIso();
+  const now = nowIso(), today = todayKst();
 
   // 임대인: 기존 선택 또는 새로 등록 (같은 이메일이 있으면 그 임대인으로 연결)
   let landlordId = toInt(b.landlord_id);
@@ -131,7 +138,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
     .bind(code, title, landlordId || null, toInt(b.inquiry_id), kinds, pick(b.stage, PSTAGE_IDS, 'intake'), pick(b.priority, ['high', 'normal', 'low'], 'normal'),
       clip(b.address, 200) || null, clip(b.building_name, 100) || null, clip(b.building_use, 100) || null, clip(b.scale, 100) || null, clip(b.land_area, 50) || null, clip(b.gross_area, 50) || null, clip(b.built_year, 20) || null,
       clip(b.vacancy, 2000) || null, clip(b.request, 4000) || null, clip(b.goal, 2000) || null, clip(b.finance, 4000) || null, clip(b.internal_memo, 4000) || null, clip(b.next_action, 300) || null,
-      toDate(b.start_date) || now.slice(0, 10), toDate(b.due_date), b.landlord_access === false ? 0 : 1, user.name, now).run();
+      toDate(b.start_date) || today, toDate(b.due_date), b.landlord_access === false ? 0 : 1, user.name, now).run();
   const id = r.meta.last_row_id;
   if (b.template !== false) await insertTasks(DB, id, templateRows(kinds, !!landlordId));
   await logp(DB, id, user.name, 'create', `프로젝트 생성 (${code})${kinds ? ' · ' + kinds.split(',').map(k => KINDS[k]).join(', ') : ''}`);

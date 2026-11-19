@@ -1,6 +1,7 @@
 // GET  /api/admin/user?id= — 회원 상세
 // POST /api/admin/user {id, action: 'verify' | 'delete'} — 관리 작업
 import { handle, readJson, json, HttpError, db, requireAdmin, nowIso, isAdmin } from '../../../lib/server.js';
+import { cdb } from '../../../lib/center.js';
 export const onRequestGet = handle(async ({ request, env }) => {
   await requireAdmin(env, request);
   const id = parseInt(new URL(request.url).searchParams.get('id'), 10);
@@ -22,9 +23,13 @@ export const onRequestPost = handle(async ({ request, env }) => {
     await DB.prepare(`UPDATE users SET email_verified = 1, updated_at = ?1 WHERE id = ?2`).bind(nowIso(), id).run();
   } else if (b.action === 'delete') {
     if (id === admin.id) throw new HttpError('cannot_delete_self', 400);
+    await cdb(env);
     await DB.batch([
       DB.prepare(`DELETE FROM sessions WHERE user_id = ?1`).bind(id),
       DB.prepare(`DELETE FROM user_tokens WHERE user_id = ?1`).bind(id),
+      DB.prepare(`DELETE FROM notifs WHERE user_id = ?1`).bind(id),
+      DB.prepare(`DELETE FROM user_prefs WHERE user_id = ?1`).bind(id),
+      DB.prepare(`DELETE FROM project_seen WHERE user_id = ?1`).bind(id),
       DB.prepare(`UPDATE inquiries SET user_id = NULL WHERE user_id = ?1`).bind(id),
       DB.prepare(`UPDATE deliveries SET user_id = NULL WHERE user_id = ?1`).bind(id),
       DB.prepare(`DELETE FROM users WHERE id = ?1`).bind(id),

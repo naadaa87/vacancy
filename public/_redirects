@@ -4,3 +4,7 @@
 /seminar      /solution  301
 /article      /insights/ 301
 /index.html   /          301
+# 서치 콘솔에 404 로 잡힌 옛 아임웹 주소 (2026-11 색인 보고서)
+/home         /          301
+/25           /insights/ 301
+/article/*    /insights/ 301

@@ -7,5 +7,6 @@ Disallow: /reset-password
 Disallow: /setup-check
 Disallow: /documents/
 Disallow: /center
+Disallow: /cdn-cgi/
 
 Sitemap: https://vacancy.co.kr/sitemap.xml

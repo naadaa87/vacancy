@@ -4,6 +4,8 @@
  *  {project_id, action:'approve', id, body?, notify}   — 파트너 글을 임대인에게 공개 (관리자)
  *  {project_id, action:'reject', id}                   — 임대인 공개 보류, 참여자 공유로 유지 (관리자)
  *  {project_id, action:'delete', id}                   — 삭제 (관리자 또는 본인)
+ *  {project_id, action:'pin', id, pinned}              — 공지로 맨 위에 고정 (관리자)
+ *  {project_id, action:'resolve', id, resolved}        — 문의·요청 글을 해결됨으로 표시 (관리자 또는 글쓴이)
  *
  * 공개 범위
  *  internal: 공백 내부 메모 (관리자만)
@@ -11,8 +13,9 @@
  *  all:      공백 + 참여 파트너 + 임대인 (파트너 글은 공백 승인 후 임대인에게 보임)
  *  direct:   공백 ↔ 한 사람 (direct_to = 'm:참여자ID' 또는 'l'(임대인))
  */
-import { handle, readJson, json, HttpError, clip, nowIso } from '../../../lib/server.js';
-import { projectCtx, requireWrite, canSeePost, can, pick, toInt, POST_KINDS, AUDIENCES, logp, touch, notify, memberLabel, landlordLabel } from '../../../lib/center.js';
+import { handle, readJson, json, HttpError, clip, nowIso, deleteFileChunks } from '../../../lib/server.js';
+import { projectCtx, requireWrite, canSeePost, can, pick, toInt, POST_KINDS, AUDIENCES, logp, touch, memberLabel, landlordLabel } from '../../../lib/center.js';
+import { emit, audienceTargets } from '../../../lib/workspace.js';
 
 export const onRequestPost = handle(async ({ request, env }) => {
   const b = await readJson(request);
@@ -56,20 +59,25 @@ export const onRequestPost = handle(async ({ request, env }) => {
       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?12)`)
       .bind(project.id, parentId, role, user.id, role === 'partner' ? member.id : null, kind, audience, directTo, status, body, toInt(b.task_id), now).run();
     await touch(DB, project.id);
+    // 공백이 답글을 달면 문의·요청 글은 '답변 완료'가 됩니다
+    if (parentId && role === 'admin') await DB.prepare(`UPDATE project_posts SET answered_at = ?1 WHERE id = ?2 AND author_type != 'admin' AND answered_at IS NULL`).bind(now, parentId).run();
 
-    // 알림: 파트너·임대인이 쓴 글은 공백(관리자)에게, 관리자가 '메일로 알리기'를 고르면 공개 범위의 사람에게
+    // 알림: 화면 알림은 글을 볼 수 있는 사람 모두에게. 메일은 파트너·임대인의 글 → 공백, 관리자가 '메일로 알리기'를 고른 글 → 공개 범위의 사람
     let mailed = 0;
+    const word = parentId ? '답글' : '글';
     if (role !== 'admin') {
-      const who = role === 'partner' ? memberLabel({ ...ctx, role: 'admin' }, member) : landlordLabel({ ...ctx, role: 'admin' });
-      mailed = await notify(ctx, request, ['admin'], { subject: status === 'pending' ? '임대인 공개 승인 요청' : '새 소통 글', lead: `${who}님이 글을 남겼습니다.${status === 'pending' ? ' 임대인에게 공개하려면 승인이 필요합니다.' : ''}`, body });
-    } else if (b.notify && audience !== 'internal') {
-      const active = ctx.members.filter(m => m.status === 'active');
-      let targets = [];
-      if (audience === 'team') targets = active;
-      else if (audience === 'all') targets = [...active, 'landlord'];
-      else if (directTo === 'l') targets = ['landlord'];
-      else targets = active.filter(m => 'm:' + m.id === directTo);
-      mailed = await notify(ctx, request, targets, { subject: parentId ? '새 답글' : '새 소식', lead: '공백이 프로젝트 소식을 남겼습니다.', body, authorType: 'admin' });
+      const memberId = role === 'partner' ? member.id : null;
+      const name = r => (role === 'partner' ? memberLabel(r, member) : landlordLabel(r));
+      mailed = await emit(ctx, request, ['admin'], { kind: 'post', tab: 'feed', text: r => `${name(r)}님이 ${word}을 남겼습니다.${status === 'pending' ? ' 임대인 공개 승인이 필요합니다.' : ''}`, body,
+        mail: true, subject: status === 'pending' ? '임대인 공개 승인 요청' : '새 소통 글', authorType: role, memberId });
+      if (audience !== 'direct') {
+        // 승인 대기 글은 임대인에게 아직 보이지 않으므로 파트너에게만 알립니다
+        const others = audienceTargets(ctx, audience, directTo, { exceptMemberId: memberId, landlord: role !== 'landlord' && status === 'published' });
+        await emit(ctx, request, others, { kind: 'post', tab: 'feed', text: r => `${name(r)}님이 ${word}을 남겼습니다.`, body, authorType: role, memberId });
+      }
+    } else if (audience !== 'internal') {
+      mailed = await emit(ctx, request, audienceTargets(ctx, audience, directTo), { kind: 'post', tab: 'feed', text: `공백이 ${parentId ? '답글' : '새 소식'}을 남겼습니다.`, body,
+        mail: !!b.notify, subject: parentId ? '새 답글' : '새 소식', lead: '공백이 프로젝트 소식을 남겼습니다.', authorType: 'admin' });
     }
     return json({ ok: true, id: r.meta.last_row_id, status, mailed }, 201);
   }
@@ -85,8 +93,9 @@ export const onRequestPost = handle(async ({ request, env }) => {
       if (!body) throw new HttpError('validation', 422);
       await DB.prepare(`UPDATE project_posts SET status = 'published', audience = 'all', body = ?1, approved_at = ?2, approved_by = ?3, updated_at = ?2 WHERE id = ?4`).bind(body, now, user.name, id).run();
       await logp(DB, project.id, user.name, 'approve', `파트너 글 임대인 공개 승인 (#${id})`);
-      let mailed = 0;
-      if (b.notify) mailed = await notify(ctx, request, ['landlord'], { subject: '새 소식', lead: '프로젝트에 새 소식이 올라왔습니다.', body, authorType: post.author_type, memberId: post.member_id });
+      const mailed = await emit(ctx, request, ['landlord'], { kind: 'post', tab: 'feed', text: '프로젝트에 새 소식이 올라왔습니다.', body, mail: !!b.notify, subject: '새 소식', authorType: post.author_type, memberId: post.member_id });
+      const author = ctx.members.find(m => m.id === post.member_id);
+      if (author) await emit(ctx, request, [author], { kind: 'post', tab: 'feed', text: '남기신 글을 공백이 확인하고 임대인에게 공개했습니다.', body });
       await touch(DB, project.id);
       return json({ ok: true, mailed });
     }
@@ -98,8 +107,30 @@ export const onRequestPost = handle(async ({ request, env }) => {
   if (b.action === 'delete') {
     const own = post.author_user_id === user.id && post.author_type === role;
     if (role !== 'admin' && !own) throw new HttpError('forbidden', 403);
-    await DB.prepare(`DELETE FROM project_posts WHERE id = ?1 OR parent_id = ?1`).bind(id).run();
+    // 글과 답글, 거기에 첨부된 파일·확인 표시까지 함께 지웁니다
+    const { results: fs = [] } = await DB.prepare(`SELECT id FROM project_files WHERE project_id = ?2 AND post_id IN (SELECT id FROM project_posts WHERE id = ?1 OR parent_id = ?1)`).bind(id, project.id).all();
+    for (const f of fs) await deleteFileChunks(env, f.id, 'pfile');
+    await DB.batch([
+      DB.prepare(`DELETE FROM project_files WHERE project_id = ?2 AND post_id IN (SELECT id FROM project_posts WHERE id = ?1 OR parent_id = ?1)`).bind(id, project.id),
+      DB.prepare(`DELETE FROM post_acks WHERE post_id IN (SELECT id FROM project_posts WHERE id = ?1 OR parent_id = ?1)`).bind(id),
+      DB.prepare(`DELETE FROM project_posts WHERE id = ?1 OR parent_id = ?1`).bind(id),
+    ]);
     if (role === 'admin' && !own) await logp(DB, project.id, user.name, 'delete', `소통 글 삭제 (#${id})`);
+    return json({ ok: true });
+  }
+
+  if (b.action === 'pin') {
+    if (role !== 'admin') throw new HttpError('forbidden', 403);
+    if (post.parent_id) throw new HttpError('validation', 422);
+    await DB.prepare(`UPDATE project_posts SET pinned = ?1 WHERE id = ?2`).bind(b.pinned ? 1 : 0, id).run();
+    return json({ ok: true });
+  }
+
+  if (b.action === 'resolve') {
+    const own = post.author_user_id === user.id && post.author_type === role;
+    if (role !== 'admin' && !own) throw new HttpError('forbidden', 403);
+    if (post.parent_id) throw new HttpError('validation', 422);
+    await DB.prepare(`UPDATE project_posts SET resolved_at = ?1 WHERE id = ?2`).bind(b.resolved === false ? null : now, id).run();
     return json({ ok: true });
   }
 

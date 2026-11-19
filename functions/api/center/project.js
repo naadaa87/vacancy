@@ -11,17 +11,20 @@
 import { handle, readJson, json, HttpError, clip, nowIso, deleteFileChunks } from '../../../lib/server.js';
 import { projectCtx, projectPayload, markSeen, requireProjectAdmin, PSTAGE_IDS, ACTIVE_STAGES, pstageLabel, PSTAGES, cleanKinds, pick, toDate, toInt,
   logp, touch, notify, KINDS } from '../../../lib/center.js';
+import { workspacePayload, emit } from '../../../lib/workspace.js';
 
 export const onRequestGet = handle(async ({ request, env }) => {
   const u = new URL(request.url);
   const ctx = await projectCtx(env, request, u.searchParams.get('id'), { as: u.searchParams.get('as') });
   const data = await projectPayload(ctx);
+  const plus = await workspacePayload(ctx);
+  if (plus.stats_plus) { Object.assign(data.stats, plus.stats_plus); delete plus.stats_plus; }
   await markSeen(ctx);
-  return json({ ok: true, ...data });
+  return json({ ok: true, ...data, ...plus });
 });
 
 const TEXT_FIELDS = { title: 120, address: 200, building_name: 100, building_use: 100, scale: 100, land_area: 50, gross_area: 50, built_year: 20,
-  vacancy: 2000, request: 4000, goal: 2000, finance: 4000, internal_memo: 4000, next_action: 300 };
+  vacancy: 2000, request: 4000, goal: 2000, finance: 4000, internal_memo: 4000, next_action: 300, outcome: 4000 };
 
 export const onRequestPost = handle(async ({ request, env }) => {
   const b = await readJson(request);
@@ -52,12 +55,11 @@ export const onRequestPost = handle(async ({ request, env }) => {
     const closed = ACTIVE_STAGES.includes(stage) ? null : (project.closed_at || now);
     await DB.prepare(`UPDATE projects SET stage = ?1, closed_at = ?2, updated_at = ?3 WHERE id = ?4`).bind(stage, closed, now, project.id).run();
     await logp(DB, project.id, user.name, 'stage', `${pstageLabel(project.stage)} → ${pstageLabel(stage)}`);
-    let mailed = 0;
-    if (b.notify) {
-      const ext = (PSTAGES.find(s => s.id === stage) || {}).ext;
-      const targets = ['landlord', ...ctx.members.filter(m => m.status === 'active')];
-      mailed = await notify({ ...ctx, project: { ...project, stage } }, request, targets, { subject: '진행 단계 안내', lead: `진행 단계가 '${ext}'(으)로 바뀌었습니다.` });
-    }
+    // 단계가 바뀌면 화면 알림은 항상, 메일은 관리자가 고른 경우에만 (임대인에게는 쉬운 단계 이름으로)
+    const S = PSTAGES.find(s => s.id === stage) || {};
+    const targets = ['landlord', ...ctx.members.filter(m => m.status === 'active')];
+    const mailed = await emit({ ...ctx, project: { ...project, stage } }, request, targets, { kind: 'stage', tab: 'overview',
+      text: r => `진행 단계가 '${r.role === 'landlord' ? S.ext : S.label}'(으)로 바뀌었습니다.`, mail: !!b.notify, subject: '진행 단계 안내' });
     return json({ ok: true, mailed });
   }
 
@@ -91,8 +93,10 @@ export const onRequestPost = handle(async ({ request, env }) => {
     if (String(b.confirm || '') !== String(project.code || project.id)) throw new HttpError('validation', 422, { message: '확인용 프로젝트 코드가 맞지 않습니다.' });
     const { results: files = [] } = await DB.prepare(`SELECT id FROM project_files WHERE project_id = ?1`).bind(project.id).all();
     for (const f of files) await deleteFileChunks(env, f.id, 'pfile');
-    await DB.batch(['project_files', 'project_posts', 'project_tasks', 'project_units', 'project_money', 'project_log', 'project_members', 'project_seen']
-      .map(t => DB.prepare(`DELETE FROM ${t} WHERE project_id = ?1`).bind(project.id)).concat([DB.prepare(`DELETE FROM projects WHERE id = ?1`).bind(project.id)]));
+    await DB.batch([DB.prepare(`DELETE FROM event_rsvp WHERE event_id IN (SELECT id FROM project_events WHERE project_id = ?1)`).bind(project.id)]
+      .concat(['project_files', 'project_posts', 'project_tasks', 'project_units', 'project_money', 'project_log', 'project_members', 'project_seen',
+        'project_events', 'project_approvals', 'post_acks', 'project_reviews', 'notifs'].map(t => DB.prepare(`DELETE FROM ${t} WHERE project_id = ?1`).bind(project.id)))
+      .concat([DB.prepare(`DELETE FROM projects WHERE id = ?1`).bind(project.id)]));
     return json({ ok: true });
   }
 

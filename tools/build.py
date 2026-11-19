@@ -61,7 +61,7 @@ def common_ctx():
             if t not in tags: tags.append(t)
     return dict(site=D.SITE, nav=D.NAV, claims=D.CLAIMS, claims_extra=D.CLAIMS_EXTRA, market=D.MARKET, cases=D.CASES, case_footnote=D.CASE_FOOTNOTE,
                 case_types=D.CASE_TYPES, case_tags=tags, models=D.MODELS, model_notice=D.MODEL_NOTICE, process=D.PROCESS, service_types=D.SERVICE_TYPES,
-                deliverables=D.DELIVERABLES, collab=D.COLLAB, judgement=D.JUDGEMENT_ITEMS, simulation=D.SIMULATION, timeline=D.TIMELINE,
+                deliverables=D.DELIVERABLES, collab=D.COLLAB, center_features=D.CENTER_FEATURES, judgement=D.JUDGEMENT_ITEMS, simulation=D.SIMULATION, timeline=D.TIMELINE,
                 principles=D.PRINCIPLES, ceo=D.CEO, brands=D.BRANDS, system=D.SYSTEM, partner_types=D.PARTNER_TYPES, partner_fee_notice=D.PARTNER_FEE_NOTICE,
                 faq=D.FAQ, insights=D.INSIGHTS, build_id=BUILD_ID)
 

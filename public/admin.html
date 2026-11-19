@@ -8,9 +8,9 @@
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="/assets/css/site.css?v=202611182127">
-<link rel="stylesheet" href="/assets/css/admin.css?v=202611182127">
-<link rel="stylesheet" href="/assets/css/center.css?v=202611182127">
+<link rel="stylesheet" href="/assets/css/site.css?v=202611200020">
+<link rel="stylesheet" href="/assets/css/admin.css?v=202611200020">
+<link rel="stylesheet" href="/assets/css/center.css?v=202611200020">
 </head>
 <body class="adm">
 <div class="adm-boot" id="boot">불러오는 중…</div>
@@ -43,6 +43,7 @@
     <nav class="adm-nav" aria-label="관리 메뉴">
       <a href="#/" data-nav="dashboard">대시보드</a>
       <a href="#/kpi" data-nav="kpi">KPI 리포트</a>
+      <a href="#/notifs" data-nav="notifs">알림 <span class="badge" id="nav-bell" hidden>0</span></a>
       <span class="adm-nav-h">홈페이지</span>
       <a href="#/inquiries" data-nav="inquiries">문의 관리 <span class="badge" id="nav-open" hidden>0</span></a>
       <a href="#/members" data-nav="members">회원 관리</a>
@@ -50,6 +51,7 @@
       <a href="#/documents" data-nav="documents">발송 이력</a>
       <span class="adm-nav-h">임대인센터</span>
       <a href="#/projects" data-nav="projects">프로젝트 <span class="badge" id="nav-proj" hidden>0</span></a>
+      <a href="#/calendar" data-nav="calendar">전체 일정</a>
       <a href="#/landlords" data-nav="landlords">임대인</a>
       <a href="#/partners" data-nav="partners">파트너</a>
       <a href="#/finance" data-nav="finance">정산 현황</a>
@@ -67,8 +69,9 @@
 <div class="adm-toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>window.GB_PAGE_NAMES = {"/": "홈", "/solution": "공실개발 솔루션", "/models": "개발모델", "/cases": "개발사례", "/brands": "운영브랜드", "/about": "회사소개", "/partners": "파트너", "/insights": "인사이트 목록", "/assessment": "공간 사전진단", "/contact": "공간 검토 요청(문의)", "/privacy": "개인정보처리방침", "/terms": "이용약관", "/signup": "회원가입", "/login": "로그인", "/forgot-password": "비밀번호 찾기", "/reset-password": "비밀번호 재설정", "/account": "마이페이지", "/center": "임대인센터", "/documents/view": "받은 자료 보기", "/setup-check": "설정 점검", "/insights/no-elevator-upper-floors": "인사이트: 엘리베이터 없는 고층 상가를 검토할 때 보는 7가지", "/insights/rental-vs-lodging": "인사이트: 공간대여와 숙박업의 차이: 기획 전에 확인할 조건", "/insights/unmanned-is-not-unmanaged": "인사이트: 무인매장은 사람이 필요 없다는 말이 틀린 이유", "/insights/vacancy-development-pnl": "인사이트: 공실개발 손익계산서에 반드시 넣어야 할 비용", "/insights/before-selling-a-building": "인사이트: 건물 매각 전 운영실적을 만들 때 주의할 점", "/insights/sublease-masterlease-management": "인사이트: 전대·마스터리스·운영위탁은 무엇이 다른가"};</script>
-<script src="/assets/js/project.js?v=202611182127" defer></script>
-<script src="/assets/js/kpi.js?v=202611182127" defer></script>
-<script src="/assets/js/admin.js?v=202611182127" defer></script>
+<script src="/assets/js/workspace.js?v=202611200020" defer></script>
+<script src="/assets/js/project.js?v=202611200020" defer></script>
+<script src="/assets/js/kpi.js?v=202611200020" defer></script>
+<script src="/assets/js/admin.js?v=202611200020" defer></script>
 </body>
 </html>

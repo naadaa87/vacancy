@@ -8,6 +8,7 @@
  */
 import { handle, readJson, json, HttpError, clip, nowIso } from '../../../lib/server.js';
 import { projectCtx, requireProjectAdmin, ROLES, PERMS, splitPerms, toInt, toNum, logp, touch, notify, aliasOf } from '../../../lib/center.js';
+import { emit } from '../../../lib/workspace.js';
 
 const permStr = v => [...new Set((Array.isArray(v) ? v : String(v || '').split(',')).filter(p => PERMS.includes(p)))].join(',');
 const PERM_KO = { owner: '임대인 정보', leases: '임대 현황', finance: '가격·재무', files: '자료실', upload: '자료 올리기', tasks: '추진사항 관리', team: '참여자 공개', publish: '임대인 직접 공유' };
@@ -49,12 +50,10 @@ export const onRequestPost = handle(async ({ request, env }) => {
     }
     await touch(DB, project.id);
     await logp(DB, project.id, user.name, 'member', `참여 추가: ${partner.name}${partner.company ? '(' + partner.company + ')' : ''} — ${ROLES[role]}, 별칭 '${alias}'`);
-    let mailed = 0;
-    if (b.notify) {
-      const m = { ...partner, id: memberId, project_id: project.id, partner_id: partner.id, role, alias, perms, status: 'active', pstatus: partner.status };
-      mailed = await notify({ ...ctx, members: [...members.filter(x => x.id !== memberId), m] }, request, [m], { subject: '프로젝트 참여 요청',
-        lead: `${ROLES[role]} 파트너로 참여를 요청드립니다. 건물 정보와 진행 사항은 임대인센터에서 확인하실 수 있습니다.` });
-    }
+    // 참여 안내: 화면 알림은 항상(가입한 파트너), 메일은 관리자가 고른 경우 (초대 메일은 수신 설정과 관계없이 보냄)
+    const m = { ...partner, id: memberId, project_id: project.id, partner_id: partner.id, role, alias, perms, status: 'active', pstatus: partner.status };
+    const mailed = await emit({ ...ctx, members: [...members.filter(x => x.id !== memberId), m] }, request, [m], { kind: 'info', tab: 'overview', text: `${ROLES[role]} 파트너로 프로젝트에 참여하게 되었습니다.`,
+      mail: b.notify ? 'force' : false, subject: '프로젝트 참여 요청', lead: `${ROLES[role]} 파트너로 참여를 요청드립니다. 건물 정보와 진행 사항은 임대인센터에서 확인하실 수 있습니다.` });
     return json({ ok: true, member_id: memberId, alias, mailed }, 201);
   }
 

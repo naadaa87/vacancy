@@ -1,12 +1,16 @@
 // POST /api/track — 홈페이지 방문 통계 수집 (track.js가 보냄). 항상 204로 응답합니다.
 import { hasDb } from '../../lib/server.js';
 import { record, trackableHost, BOT } from '../../lib/analytics.js';
+import { dailyTick } from '../../lib/workspace.js';
 
 const NO_CONTENT = () => new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost(c) {
+  const { request, env } = c;
   try {
     if (!hasDb(env) || !trackableHost(request, env)) return NO_CONTENT();
+    // 임대인센터의 기한·일정 알림(하루 한 번)을 방문 요청에 얹어 실행합니다. 응답을 기다리게 하지 않습니다.
+    try { c.waitUntil(dailyTick(env, request)); } catch (_) {}
     // 같은 사이트에서 보낸 요청만
     const origin = request.headers.get('Origin');
     if (origin && new URL(origin).host !== new URL(request.url).host) return NO_CONTENT();

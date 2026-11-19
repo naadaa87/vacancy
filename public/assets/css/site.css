@@ -752,3 +752,15 @@ body.menu-open .mobile-menu { display: block; position: fixed; top: 72px; left: 
 @media (max-width: 1024px), (pointer: coarse) {
   input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]), select, textarea { font-size: 16px !important; }
 }
+
+/* 임대인센터 메뉴의 읽지 않은 알림 수 */
+.nav-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px; border-radius: 999px; background: var(--point); color: #fff; font-size: 11px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; vertical-align: middle; }
+
+/* 솔루션: 의뢰 후 진행 관리 (임대인센터 안내) */
+.center-feats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; counter-reset: cf; }
+.center-feats li { padding: 22px 20px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: #fff; counter-increment: cf; }
+.center-feats li::before { content: "0" counter(cf); display: block; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; color: var(--point-dark); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+.center-feats b { display: block; font-size: 1.05rem; margin-bottom: 8px; }
+.center-feats p { font-size: var(--fs-sm); color: var(--ink-2); line-height: 1.7; }
+@media (max-width: 1000px) { .center-feats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .center-feats { grid-template-columns: 1fr; } }

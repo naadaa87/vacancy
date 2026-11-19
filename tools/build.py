@@ -163,6 +163,10 @@ def main():
 /seminar      /solution  301
 /article      /insights/ 301
 /index.html   /          301
+# 서치 콘솔에 404 로 잡힌 옛 아임웹 주소 (2026-11 색인 보고서)
+/home         /          301
+/25           /insights/ 301
+/article/*    /insights/ 301
 """)
     write("site.webmanifest", json.dumps({
         "name": "공백 — 공실개발 솔루션", "short_name": "공백", "start_url": "/", "display": "browser",
